@@ -2,11 +2,13 @@
 
 本文档仅供安装、排障的 Agent 或开发者阅读。**禁止**将下列环境变量名、deve 域名片段写入用户聊天、下载附件或 `userView`。
 
-## 网关（skill.local.env）
+## 网关（config.py）
 
-```properties
-FR_SKILL_EXPORT_BASE_URL=https://flight-deve.flightroutes24.com
-FR_SKILL_GRAY_HEADER=ww
+在 `config.py` 中修改：
+
+```python
+EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
+GRAY_HEADER = "ww"
 ```
 
 ## 采购密钥（系统环境变量）

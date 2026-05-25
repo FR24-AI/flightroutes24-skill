@@ -5,35 +5,6 @@ import os
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent
-LOCAL_ENV_FILE = SKILL_DIR / "skill.local.env"
-
-
-# skill.local.env 仅允许网关项；采购 CID/密钥必须走环境变量
-_LOCAL_ENV_ALLOWED_KEYS = frozenset(
-    {"FR_SKILL_EXPORT_BASE_URL", "FR_SKILL_GRAY_HEADER"},
-)
-
-
-def _load_skill_local_env() -> None:
-    """加载 skill.local.env（仅网关；不覆盖已有环境变量；忽略 FR_NEWAPI_*）。"""
-    if not LOCAL_ENV_FILE.is_file():
-        return
-    for raw in LOCAL_ENV_FILE.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        if key not in _LOCAL_ENV_ALLOWED_KEYS:
-            continue
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
-
-
-_load_skill_local_env()
 CACHE_DIR = SKILL_DIR / ".cache"
 CLIENT_KEY_FILE = CACHE_DIR / "skill_client.json"
 PENDING_PAYLOAD_FILE = CACHE_DIR / "pending_search.json"
@@ -49,20 +20,14 @@ SKILL_ID = "fr24-ai"
 SKILL_DISPLAY_NAME = "Flightroutes24航路国际机票"
 SKILL_AUTHOR = "FR24"
 
-# export 根地址（deve 默认）
-EXPORT_BASE_URL = os.environ.get(
-    "FR_SKILL_EXPORT_BASE_URL",
-    "https://flight-deve.flightroutes24.com",
-).rstrip("/")
+# --- export 网关（项目内固定；切换环境请直接改此处，勿使用 skill.local.env）---
+EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
+GRAY_HEADER = "ww"
 
 SHOPPING_PATH = "/ai/shopping"
 NEWAPI_SHOPPING_PATH = "/api/new/shopping"
 PRICING_PATH = "/api/new/pricing"
 BOOKING_PATH = "/api/new/booking"
-
-GRAY_HEADER = os.environ.get("FR_SKILL_GRAY_HEADER", "").strip()
-if not GRAY_HEADER and "deve." in EXPORT_BASE_URL:
-    GRAY_HEADER = "ww"
 
 # NewApi 采购密钥（环境变量，勿写入仓库）
 NEWAPI_APP_KEY = os.environ.get("FR_NEWAPI_APPKEY", "").strip()

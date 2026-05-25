@@ -112,10 +112,11 @@ def search(payload: dict, *, selection: str = "direct") -> dict:
 
 
 def _http_error_hint(status_code: int) -> str | None:
-    if status_code == 404 and not GRAY_HEADER:
-        return "测试环境通常需要设置 FR_SKILL_GRAY_HEADER（如 ww）"
-    if status_code == 404 and GRAY_HEADER:
-        return f"已带 gray={GRAY_HEADER} 仍 404，请确认域名与路径 {SHOPPING_PATH}"
+    if status_code == 404:
+        return (
+            f"HTTP 404：请确认 config.py 中 EXPORT_BASE_URL、GRAY_HEADER"
+            f"（当前 gray={GRAY_HEADER or '(空)'}）与路径 {SHOPPING_PATH}"
+        )
     return None
 
 

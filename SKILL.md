@@ -35,7 +35,7 @@ metadata:
 | 采购查价 | 已配置 APPKEY 与签名密钥 | 同上，请求头 `appkey`，请求体 `authentication` |
 | 预订 | 已配置 APPKEY、签名密钥、AES 密钥 | `POST /api/new/pricing`、`POST /api/new/booking` |
 
-预订依赖见 `requirements.txt`。网关地址在 `skill.local.env` 中配置；采购密钥仅通过本机用户环境变量配置，**勿在对话中向用户宣读环境变量名或密钥内容**。
+预订依赖见 `requirements.txt`。网关地址在 `config.py` 中固定配置；采购密钥仅通过本机用户环境变量配置，**勿在对话中向用户宣读环境变量名或密钥内容**。
 
 ---
 

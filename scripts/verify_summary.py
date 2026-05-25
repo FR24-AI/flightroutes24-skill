@@ -102,7 +102,7 @@ def main() -> int:
             out = {
                 "code": str(e.code),
                 "ok": False,
-                "errors": [f"HTTP {e.code} {e.reason}，请检查 FR_SKILL_EXPORT_BASE_URL 与 gray 头"],
+                "errors": [f"HTTP {e.code} {e.reason}，请检查 config.py 中 EXPORT_BASE_URL 与 GRAY_HEADER"],
                 "message": e.reason,
             }
             print(json.dumps(out, ensure_ascii=False, indent=2))

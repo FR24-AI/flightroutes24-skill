@@ -44,7 +44,9 @@ def run(args: list[str]) -> dict:
 
 def main() -> int:
     print(f"ROOT={_ROOT}")
-    print(f"export={os.environ.get('FR_SKILL_EXPORT_BASE_URL', '(default)')}")
+    from config import EXPORT_BASE_URL, GRAY_HEADER
+
+    print(f"export={EXPORT_BASE_URL} gray={GRAY_HEADER}")
 
     print("\n--- 1. parse ---")
     p1 = run(["scripts/nl_to_search.py", "parse", "--text", QUERY])

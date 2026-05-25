@@ -68,7 +68,6 @@ fr24-ai/
 ├── INSTALL.md            # 本安装说明
 ├── config.py
 ├── requirements.txt
-├── skill.local.env.example
 ├── scripts/
 │   ├── nl_to_search.py
 │   ├── skill_search_client.py
@@ -87,11 +86,14 @@ fr24-ai/
 
 ## 四、配置
 
-### 4.1 网关（`skill.local.env`）
+### 4.1 网关（`config.py`）
 
-1. 复制 `skill.local.env.example` 为同目录下的 `skill.local.env`（该文件已列入 `.gitignore`）。
-2. 按运维提供的地址填写 **`FR_SKILL_EXPORT_BASE_URL`**；若环境要求灰度路由，填写 **`FR_SKILL_GRAY_HEADER`**。
-3. 勿在 `skill.local.env` 中写入采购密钥（`FR_NEWAPI_*` 不会被读取）。
+export 根地址与灰度头在 **`config.py`** 中固定：
+
+- `EXPORT_BASE_URL`（默认 `https://flight-deve.flightroutes24.com`）
+- `GRAY_HEADER`（deve 默认 `ww`）
+
+切换测试/生产环境时由维护者直接修改该文件，**无需** `skill.local.env`。
 
 ### 4.2 演示查价
 
@@ -157,7 +159,7 @@ python scripts/skill_search_client.py search --payload-file .cache/pending_searc
 
 | 现象 | 建议处理 |
 |------|----------|
-| HTTP 404 | 确认 `FR_SKILL_EXPORT_BASE_URL` 正确且 export 已发布 `/ai/shopping` |
+| HTTP 404 | 确认 `config.py` 中 `EXPORT_BASE_URL`、`GRAY_HEADER` 正确且 export 已发布 `/ai/shopping` |
 | `307901` | 演示配额已用完；开通采购并配置 APPKEY 后继续搜索 |
 | `307900` | `clientKey` 格式无效，删除 `.cache/skill_client.json` 后重新执行 `ensure-key` |
 | Agent 未触发 Skill | 确认 `SKILL.md` 位于 skills 目录且已重启 Agent；`description` 需包含查价相关场景 |
