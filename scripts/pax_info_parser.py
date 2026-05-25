@@ -103,7 +103,7 @@ def chinese_to_ticket_name(name: str) -> tuple[str, str]:
         surname = py[0].upper()
         given = "".join(x.capitalize() for x in py[1:]).upper() if len(py) > 1 else surname
         if len(py) == 1 and len(clean) >= 2:
-            # 两字名：魏威 → WEI/WEI
+            # 两字名：张三 → ZHANG/SAN
             given = py[0].upper()
         ticket = f"{surname}/{given}"
         display_py = "".join(py)

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 from date_parser import parse_date
@@ -114,8 +115,9 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
 
 
 DATE_PART = (
-    r"\d{4}-\d{2}-\d{2}|\d+月\d+日|明天|后天|今天|今日|明日|下周|本周|下星期|本星期|"
-    r"(?:本|下)周[一二三四五六日天]|下星期[一二三四五六日天]|本星期[一二三四五六日天]"
+    r"\d{4}-\d{2}-\d{2}|\d+月\d+日|明天|后天|今天|今日|明日|"
+    r"(?:本|下)周[一二三四五六日天]|下星期[一二三四五六日天]|本星期[一二三四五六日天]|"
+    r"下周|本周|下星期|本星期"
 )
 DATE_TOKEN = rf"({DATE_PART})"
 
@@ -230,11 +232,22 @@ def main():
     import argparse
     import sys
 
+    _scripts = Path(__file__).resolve().parent
+    _root = _scripts.parent
+    if str(_scripts) not in sys.path:
+        sys.path.insert(0, str(_scripts))
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    from output_export import failure_envelope, parse_user_view, wrap_envelope  # noqa: E402
+
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["build", "parse"])
     parser.add_argument("--text", default="")
     parser.add_argument("--intent-file", default="")
     args = parser.parse_args()
+
+    pending = _root / ".cache" / "pending_search.json"
 
     if args.command == "parse":
         payload, summary, err = parse_simple_text(args.text)
@@ -243,17 +256,20 @@ def main():
         payload, summary, err = build_payload_from_intent(intent)
 
     if err:
-        out = {"skill": "fr-newapi-search", "status": "failure", "action": "parse", "message": err}
-    else:
-        out = {
-            "skill": "fr-newapi-search",
-            "status": "success",
-            "action": "parse",
-            "data": {"payload": payload, "intentSummary": summary},
-            "message": "解析成功，请确认后执行 search",
-        }
+        print(json.dumps(failure_envelope("parse", err), ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    pending.parent.mkdir(parents=True, exist_ok=True)
+    pending.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = wrap_envelope(
+        action="parse",
+        status="success",
+        user_view=parse_user_view(summary, payload),
+        agent_only={"payload": payload, "payloadFile": str(pending)},
+        message="解析成功，请确认下方行程；确认后将为您搜索航班。",
+    )
     print(json.dumps(out, ensure_ascii=False, indent=2))
-    sys.exit(0 if out["status"] == "success" else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

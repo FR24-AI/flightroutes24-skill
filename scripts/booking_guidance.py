@@ -8,16 +8,16 @@ PASSENGER_INFO_USER_PROMPT = """生单需要每位乘客的证件信息及订单
 
 **成人示例（1 位）：**
 > 乘客：张三，男，1990年1月15日出生，护照 E12345678，2030年12月31日到期，中国籍。
-> 联系人：李四，手机 13800138000，邮箱 zhangsan@example.com
+> 联系人：张三，手机 13800138000，邮箱 zhangsan@example.com
 
-**英文姓名示例（与机票一致）：**
-> 乘客：ZHANG/SAN，男，1990-01-15，护照 E12345678，签发国中国，2030-12-31 到期，国籍 CN。
-> 联系人：ZHANG/SAN，+86 13800138000，zhangsan@example.com
+**机票英文姓名示例（与证件一致时）：**
+> 乘客：张三，男，1990-01-15，护照 E12345678，2030-12-31 到期，国籍 CN（机票姓名 ZHANG/SAN）。
+> 联系人：张三，手机 +86 13800138000，邮箱 zhangsan@example.com
 
 **成人+儿童示例：**
-> 成人：王明，男，1988-03-20，护照 G12345678，2031-06-30 到期，中国籍。
-> 儿童：王小明，男，2018-06-01，护照 G87654321，2031-06-30 到期，中国籍，跟成人王明一起。
-> 联系人：王明，13800138000，wang@example.com
+> 成人：张三，男，1988-03-20，护照 G12345678，2031-06-30 到期，中国籍。
+> 儿童：张小三，男，2018-06-01，护照 G87654321，2031-06-30 到期，中国籍，与成人张三同行。
+> 联系人：张三，13800138000，zhangsan@example.com
 
 **字段说明（缺一会无法生单）：**
 - 乘客：姓名（中文或姓/名）、性别（男/女）、出生日期、证件类型（默认护照）、证件号、证件有效期、国籍
@@ -25,12 +25,12 @@ PASSENGER_INFO_USER_PROMPT = """生单需要每位乘客的证件信息及订单
 
 PASSENGER_INFO_EXAMPLES: list[str] = [
     "乘客：张三，男，1990年1月15日出生，护照 E12345678，2030年12月31日到期，中国籍。"
-    "联系人：李四，手机 13800138000，邮箱 zhangsan@example.com",
-    "乘客：ZHANG/SAN，男，1990-01-15，护照 E12345678，签发国 CN，2030-12-31 到期，国籍 CN。"
-    "联系人：ZHANG/SAN，+86 13800138000，zhangsan@example.com",
-    "成人：王明，男，1988-03-20，护照 G12345678，2031-06-30 到期，中国籍。"
-    "儿童：王小明，男，2018-06-01，护照 G87654321，2031-06-30 到期，中国籍。"
-    "联系人：王明，13800138000，wang@example.com",
+    "联系人：张三，手机 13800138000，邮箱 zhangsan@example.com",
+    "乘客：张三，男，1990-01-15，护照 E12345678，2030-12-31 到期，国籍 CN。"
+    "联系人：张三，手机 +86 13800138000，zhangsan@example.com",
+    "成人：张三，男，1988-03-20，护照 G12345678，2031-06-30 到期，中国籍。"
+    "儿童：张小三，男，2018-06-01，护照 G87654321，2031-06-30 到期，中国籍。"
+    "联系人：张三，13800138000，zhangsan@example.com",
 ]
 
 BOOKING_SELECTION_USER_PROMPT = (
@@ -100,7 +100,7 @@ def passenger_required_payload(*, verify_offer_id: str | None = None) -> dict[st
         "code": "PASSENGER_INFO_REQUIRED",
         "success": False,
         "step": "order",
-        "message": "生单前请提供乘客与联系人信息（见 passengerInfoPrompt 与示例）。",
+        "message": "生单前请提供乘客与联系人信息（见下方示例）。",
         "passengerInfoPrompt": PASSENGER_INFO_USER_PROMPT,
         "passengerInfoExamples": PASSENGER_INFO_EXAMPLES,
         "nextSteps": BOOKING_WORKFLOW_STEPS,

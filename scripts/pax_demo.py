@@ -5,7 +5,7 @@ from typing import Any
 
 
 def demo_passengers(adult: int = 1, child: int = 0, infant: int = 0) -> list[dict[str, Any]]:
-    """生成满足常见校验要求的演示乘客（仅用于 deve 联调）。"""
+    """生成满足常见校验要求的演示乘客（仅维护者自动化测试，勿对用户展示）。"""
     passengers: list[dict[str, Any]] = []
     pax_id = 1
 
@@ -30,7 +30,7 @@ def demo_passengers(adult: int = 1, child: int = 0, infant: int = 0) -> list[dic
         passengers.append(
             {
                 "paxId": pax_id,
-                "name": "ZHANG/SI",
+                "name": "ZHANG/XIAO",
                 "paxType": "CHD",
                 "birthday": "2018-06-01",
                 "gender": "M",

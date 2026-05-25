@@ -4,10 +4,8 @@
 
 ## 一、前置条件
 
-1. **服务端已部署** `intl_fare_export_svr` 的 Skill 接口：`POST /api/skill/shopping`
-2. 账号系统存在采购 **`SKILL_DEMO`**
-3. 本机 **Python 3.10+**；预订需 `pip install -r requirements.txt`（pycryptodome、pypinyin）
-4. 测试/灰度网关能访问，且需请求头 **`gray`**（deve 一般为 `ww`）
+1. 账号系统存在采购 **`SKILL_DEMO`**
+2. 本机 **Python 3.10+**；预订需 `pip install -r requirements.txt`（pycryptodome、pypinyin）
 
 ## 二、获取 Skill 文件
 
@@ -52,7 +50,10 @@ fr-newapi-search/
 │   ├── booking_flow_test.py
 │   └── ...
 └── references/
-    └── places.json
+    ├── places.json
+    ├── output-rules.md
+    ├── setup-maintainer.md
+    └── booking.md
 ```
 
 **重启 Cursor** 或重新打开 Agent 会话后，Skill 会按 `SKILL.md` 的 `description` 被自动匹配（触发词：查航班、搜机票等）。
@@ -76,29 +77,15 @@ fr-newapi-search/
 
 ### 5.1 网关（`skill.local.env`，已随 Skill 提供）
 
-复制 `skill.local.env.example` 为 `skill.local.env`（已 gitignore），默认固定 deve：
-
-```properties
-FR_SKILL_EXPORT_BASE_URL=https://flight-deve.flightroutes24.com
-FR_SKILL_GRAY_HEADER=ww
-```
+复制 `skill.local.env.example` 为 `skill.local.env`（已 gitignore），按示例填写网关地址与 `gray` 头。
 
 **不要**在 `skill.local.env` 里写 `FR_NEWAPI_*`（`config.py` 会忽略）。
 
-### 5.2 采购 CID / 密钥（仅用户或系统环境变量）
+### 5.2 采购密钥（仅系统环境变量）
 
-演示查价：**不要**设置下列变量。
+演示查价：**不要**设置采购相关变量。
 
-采购搜/订：在 Windows「用户环境变量」或当前终端设置（改用户变量后需重启 Cursor）：
-
-```powershell
-$env:FR_NEWAPI_APPKEY='你的APPKEY'
-$env:FR_NEWAPI_SIGN_SECRET='你的SHA512签名密钥'
-$env:FR_NEWAPI_AES_SECRET='你的16字节AES密钥'
-# deve 联调可选：
-# $env:FR_NEWAPI_SKIP_IP_WHITELIST='1'
-# $env:FR_NEWAPI_SKIP_AUTH='1'
-```
+采购搜/订：在 Windows「用户环境变量」或当前终端设置（改用户变量后需重启 Cursor），变量名与 **deve 联调可选项** 见 **[references/setup-maintainer.md](./references/setup-maintainer.md)**（勿在 Agent 对话中向最终用户展示该文档内容）。
 
 验证：
 
@@ -118,13 +105,16 @@ python scripts/verify_summary.py --payload-file .cache/pending_search.json --cli
 
 看到 `"ok": true` 且 `code: 000000` 即安装成功。
 
-全流程联调（需 NewApi 密钥）：
+输出规范与脱敏校验：
 
 ```bash
-pip install -r requirements.txt
-set FR_BOOKING_TEST_ORDER=1
-python scripts/booking_flow_test.py
+set PYTHONIOENCODING=utf-8
+python scripts/validate_user_output.py
 ```
+
+（会消耗 1 次搜索配额；仅测解析可加 `--skip-search`。）
+
+全流程自动化测试见 [references/setup-maintainer.md](./references/setup-maintainer.md)。
 
 ## 七、配额与安全
 
@@ -144,4 +134,4 @@ python scripts/booking_flow_test.py
 | 307900 | clientKey 格式错误，需 32–128 位 `[A-Za-z0-9_-]` |
 | Agent 不触发 Skill | 确认 `SKILL.md` 在 skills 目录且 `description` 含触发场景 |
 
-详细用法见 [SKILL.md](./SKILL.md)。
+详细用法见 [SKILL.md](./SKILL.md)。对用户展示报价时遵循 [references/output-rules.md](./references/output-rules.md)。

@@ -11,6 +11,7 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+from output_export import failure_envelope, parse_user_view, wrap_envelope  # noqa: E402
 from query_parser import build_payload_from_intent, parse_simple_text  # noqa: E402
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -31,19 +32,19 @@ def main():
         payload, summary, err = build_payload_from_intent(intent)
 
     if err:
-        out = {"skill": "fr-newapi-search", "status": "failure", "action": "parse", "message": err}
-        print(json.dumps(out, ensure_ascii=False, indent=2))
+        print(json.dumps(failure_envelope("parse", err), ensure_ascii=False, indent=2))
         sys.exit(1)
 
     PENDING.parent.mkdir(parents=True, exist_ok=True)
     PENDING.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    out = {
-        "skill": "fr-newapi-search",
-        "status": "success",
-        "action": "parse",
-        "data": {"payload": payload, "intentSummary": summary, "payloadFile": str(PENDING)},
-        "message": "解析成功。请向用户确认后执行：python scripts/skill_search_client.py search --payload-file .cache/pending_search.json",
-    }
+    user_view = parse_user_view(summary, payload)
+    out = wrap_envelope(
+        action="parse",
+        status="success",
+        user_view=user_view,
+        agent_only={"payload": payload, "payloadFile": str(PENDING)},
+        message="解析成功，请确认下方行程；确认后将为您搜索航班。",
+    )
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

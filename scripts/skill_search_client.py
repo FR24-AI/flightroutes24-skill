@@ -82,14 +82,17 @@ def search(payload: dict, *, selection: str = "direct") -> dict:
     result = wrap_search(raw, mode)
     if not success:
         if code == "307901":
-            result["message"] = "今日搜索次数已用完（每日 10 次），请明日再试"
+            msg = "今日搜索次数已用完（每日 10 次），请明日再试"
+            result["message"] = msg
+            if "userView" in result:
+                result["userView"]["message"] = msg
         return result
 
-    data = result.get("data") or {}
+    agent = result.get("agentOnly") or {}
     pick = (selection or "direct").strip().lower()
-    selected = data.get("directLowest") if pick == "direct" else data.get("transferLowest")
+    selected = agent.get("directLowest") if pick == "direct" else agent.get("transferLowest")
     if not selected:
-        selected = data.get("directLowest") or data.get("transferLowest")
+        selected = agent.get("directLowest") or agent.get("transferLowest")
     if selected:
         BOOKING_CONTEXT_FILE.parent.mkdir(parents=True, exist_ok=True)
         BOOKING_CONTEXT_FILE.write_text(
@@ -97,12 +100,12 @@ def search(payload: dict, *, selection: str = "direct") -> dict:
                 {
                     "searchPayload": payload,
                     "searchMode": mode,
-                    "traceId": data.get("traceId"),
-                    "processingTime": data.get("processingTime"),
+                    "traceId": agent.get("traceId"),
+                    "processingTime": agent.get("processingTime"),
                     "selection": pick,
                     "selectedOffer": selected,
-                    "directLowest": data.get("directLowest"),
-                    "transferLowest": data.get("transferLowest"),
+                    "directLowest": agent.get("directLowest"),
+                    "transferLowest": agent.get("transferLowest"),
                 },
                 ensure_ascii=False,
                 indent=2,

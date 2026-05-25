@@ -76,20 +76,20 @@ FR24_API_HEADER = "fr24-api"
 
 REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"
 
+USER_BOOKING_USER_MESSAGE = (
+    f"当前为演示查价。若要预订，请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
+    f"由管理员在本机配置采购密钥后，再按预订流程提供乘客信息。"
+)
+
 USER_BOOKING_ONBOARDING = (
-    f"当前仅支持 Skill 演示查价。若要预订，请：\n"
-    f"1. 打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购\n"
-    f"2. 获取 APPKEY、SHA512 签名密钥、AES 密钥（16 字节）\n"
-    f"3. 设置环境变量：FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET\n"
-    f"4. 按 references/booking.md 执行：parse-passengers → verify → order"
+    f"{USER_BOOKING_USER_MESSAGE}\n"
+    f"（维护者）环境变量：FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET；"
+    f"deve 联调见 references/setup-maintainer.md"
 )
 
 BOOKING_CONFIG_HINT = USER_BOOKING_ONBOARDING
 
-SEARCH_ONLY_HINT = (
-    "（仅查价）未配置 FR_NEWAPI_APPKEY，搜索走 Skill 演示接口（默认 CID + 日配额）。"
-    "预订请配置密钥后按 booking.md 流程操作。"
-)
+SEARCH_ONLY_HINT = "（仅查价）当前未开通采购预订；注册并配置密钥后可继续预订。"
 
 
 def is_newapi_configured() -> bool:
@@ -112,7 +112,7 @@ def booking_required_payload(step: str = "booking") -> dict:
         "success": False,
         "step": step,
         "registerPortalUrl": REGISTER_PORTAL_URL,
-        "message": USER_BOOKING_ONBOARDING,
+        "message": USER_BOOKING_USER_MESSAGE,
         "bookingConfigHint": USER_BOOKING_ONBOARDING,
     }
 

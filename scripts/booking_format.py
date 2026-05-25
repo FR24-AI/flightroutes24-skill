@@ -13,6 +13,7 @@ from config import (  # noqa: E402
     REGISTER_PORTAL_URL,
     SEARCH_ONLY_HINT,
     USER_BOOKING_ONBOARDING,
+    USER_BOOKING_USER_MESSAGE,
     booking_required_payload,
     is_booking_ready,
     is_newapi_configured,
@@ -28,6 +29,15 @@ from booking_guidance import (  # noqa: E402
     selection_required,
 )
 from fare_summarizer import summarize_response, _summarize_from_data  # noqa: E402
+from output_export import (  # noqa: E402
+    order_agent_only,
+    order_user_view,
+    search_agent_only,
+    search_user_view,
+    verify_agent_only,
+    verify_user_view,
+    wrap_envelope,
+)
 from passenger_display import build_contact_display, build_passenger_display  # noqa: E402
 
 SUCCESS_CODES = frozenset({"0", "000000"})
@@ -103,12 +113,10 @@ def format_search_data(raw: dict, search_mode: str) -> dict[str, Any]:
         if selection_required(choices):
             lines.append(BOOKING_SELECTION_USER_PROMPT)
         if booking_enabled and booking_ready:
-            lines.append(
-                "预订：parse-passengers 核对乘客 → 用户确认 → verify → 展示 orderPreview → order"
-            )
+            lines.append("如需预订，请提供乘客与联系人信息；核对后将为您校验报价并生单。")
         elif not booking_enabled:
             lines.append(SEARCH_ONLY_HINT)
-            lines.append(USER_BOOKING_ONBOARDING)
+            lines.append(USER_BOOKING_USER_MESSAGE)
     else:
         lines.append(raw.get("message") or f"搜索失败：{code}")
 
@@ -134,14 +142,15 @@ def format_search_data(raw: dict, search_mode: str) -> dict[str, Any]:
 
 
 def wrap_search(raw: dict, search_mode: str) -> dict[str, Any]:
-    data = format_search_data(raw, search_mode)
-    return {
-        "skill": "fr-newapi-search",
-        "status": "success" if data.get("success") else "failure",
-        "action": "search",
-        "data": data,
-        "message": data.get("message", ""),
-    }
+    internal = format_search_data(raw, search_mode)
+    user_view = search_user_view(internal)
+    return wrap_envelope(
+        action="search",
+        status="success" if internal.get("success") else "failure",
+        user_view=user_view,
+        agent_only=search_agent_only(internal),
+        message=user_view.get("message", ""),
+    )
 
 
 def format_verify_data(
@@ -170,8 +179,6 @@ def format_verify_data(
     lines: list[str] = []
     if success:
         lines.append(f"校验成功：总价约 {offer.get('totalPrice')} {offer.get('currency', '')}。")
-        if verify_offer_id:
-            lines.append(f"verifyOfferId={verify_offer_id}")
         lines.append(ORDER_CONFIRM_USER_PROMPT)
     else:
         lines.append(f"校验失败：{raw.get('message') or code}")
@@ -213,13 +220,14 @@ def format_verify_data(
 
 
 def wrap_verify(data: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "skill": "fr-newapi-search",
-        "status": "success" if data.get("success") else "failure",
-        "action": "verify",
-        "data": data,
-        "message": data.get("message", ""),
-    }
+    user_view = verify_user_view(data)
+    return wrap_envelope(
+        action="verify",
+        status="success" if data.get("success") else "failure",
+        user_view=user_view,
+        agent_only=verify_agent_only(data),
+        message=user_view.get("message", ""),
+    )
 
 
 def format_order_data(raw: dict) -> dict[str, Any]:
@@ -254,10 +262,11 @@ def format_order_data(raw: dict) -> dict[str, Any]:
 
 
 def wrap_order(data: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "skill": "fr-newapi-search",
-        "status": "success" if data.get("success") else "failure",
-        "action": "order",
-        "data": data,
-        "message": data.get("message", ""),
-    }
+    user_view = order_user_view(data)
+    return wrap_envelope(
+        action="order",
+        status="success" if data.get("success") else "failure",
+        user_view=user_view,
+        agent_only=order_agent_only(data),
+        message=user_view.get("message", ""),
+    )

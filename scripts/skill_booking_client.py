@@ -35,6 +35,13 @@ from booking_guidance import (  # noqa: E402
     order_not_confirmed_payload,
 )
 from newapi_client import booking, pricing  # noqa: E402
+from output_export import (  # noqa: E402
+    failure_envelope,
+    passengers_agent_only,
+    passengers_user_view,
+    wrap_config_required,
+    wrap_envelope,
+)
 from passenger_display import build_contact_display, build_passenger_display, format_display_message  # noqa: E402
 from pax_info_parser import parse_passengers_and_contact  # noqa: E402
 
@@ -50,26 +57,19 @@ def _save_json(path: Path, data: dict) -> None:
 
 def cmd_parse_passengers(text: str) -> dict:
     if not is_newapi_configured():
-        return booking_config_required_envelope("parse-passengers", step="booking")
+        return wrap_config_required(
+            "parse-passengers",
+            booking_config_required_envelope("parse-passengers", step="booking"),
+        )
     passengers, contact, raw_mappings, contact_raw, err = parse_passengers_and_contact(text)
     if err:
-        out = passenger_required_payload()
-        out["error"] = err
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "parse-passengers",
-            "data": out,
-            "message": err,
-        }
+        return failure_envelope(
+            "parse-passengers",
+            err,
+            agent_only={**passenger_required_payload(), "error": err},
+        )
     if not contact:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "parse-passengers",
-            "data": {"error": "未解析到联系人"},
-            "message": "请补充联系人：姓名、手机、邮箱",
-        }
+        return failure_envelope("parse-passengers", "请补充联系人：姓名、手机、邮箱")
 
     p_disp = build_passenger_display(passengers, raw_mappings=raw_mappings)
     c_disp = build_contact_display(contact, raw=contact_raw)
@@ -96,27 +96,22 @@ def cmd_parse_passengers(text: str) -> dict:
         },
     )
 
-    return {
-        "skill": "fr-newapi-search",
-        "status": "success",
-        "action": "parse-passengers",
-        "data": preview,
-        "message": msg,
-    }
+    return wrap_envelope(
+        action="parse-passengers",
+        status="success",
+        user_view=passengers_user_view(preview),
+        agent_only=passengers_agent_only(preview),
+        message=msg,
+    )
 
 
 def cmd_verify(args: argparse.Namespace) -> dict:
     if not is_newapi_configured():
-        return booking_config_required_envelope("verify", step="verify")
+        return wrap_config_required("verify", booking_config_required_envelope("verify", step="verify"))
 
     if not args.passenger_confirmed:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "verify",
-            "data": passenger_not_confirmed_payload(),
-            "message": passenger_not_confirmed_payload()["message"],
-        }
+        payload = passenger_not_confirmed_payload()
+        return failure_envelope("verify", payload["message"], agent_only=payload)
 
     ctx = _load_json(Path(args.context_file))
     pax_file = Path(args.passengers_file)
@@ -124,21 +119,19 @@ def cmd_verify(args: argparse.Namespace) -> dict:
     passengers = pax_data.get("passengers") or []
     agent_contact = pax_data.get("agentContact") or {}
     if not passengers or not agent_contact:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "verify",
-            "message": "passengers.json 缺少 passengers 或 agentContact，请先 parse-passengers",
-        }
+        return failure_envelope(
+            "verify",
+            "请先完成乘客信息核对（parse-passengers）。",
+            agent_only={"detail": "passengers.json 缺少 passengers 或 agentContact"},
+        )
 
     offer_id = args.offer_id or (ctx.get("selectedOffer") or {}).get("offerId")
     if not offer_id:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "verify",
-            "message": "缺少 offer_id，请 --offer-id 或 booking_context.json 中 selectedOffer",
-        }
+        return failure_envelope(
+            "verify",
+            "请先选择直飞或中转报价后再校验。",
+            agent_only={"detail": "缺少 offer_id / selectedOffer"},
+        )
 
     payload = ctx.get("searchPayload") or _load_json(Path(args.payload_file))
     adult = payload.get("adultNum", 1)
@@ -171,39 +164,31 @@ def cmd_verify(args: argparse.Namespace) -> dict:
 
 def cmd_order(args: argparse.Namespace) -> dict:
     if not is_newapi_configured():
-        return booking_config_required_envelope("order", step="order")
+        return wrap_config_required("order", booking_config_required_envelope("order", step="order"))
     if not args.user_confirmed:
-        vid = args.verify_offer_id
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "order",
-            "data": order_not_confirmed_payload(verify_offer_id=vid),
-            "message": order_not_confirmed_payload(verify_offer_id=vid)["message"],
-        }
+        payload = order_not_confirmed_payload(verify_offer_id=args.verify_offer_id)
+        return failure_envelope("order", payload["message"], agent_only=payload)
 
     pax_data = _load_json(Path(args.passengers_file))
     passengers = pax_data.get("passengers") or []
     agent_contact = pax_data.get("agentContact") or {}
     if not passengers or not agent_contact:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "order",
-            "message": "缺少乘客/联系人，请先 parse-passengers",
-        }
+        return failure_envelope(
+            "order",
+            "请先完成乘客信息核对（parse-passengers）。",
+            agent_only={"detail": "缺少 passengers 或 agentContact"},
+        )
 
     ctx_path = Path(args.context_file)
     verify_id = args.verify_offer_id
     if not verify_id and ctx_path.exists():
         verify_id = _load_json(ctx_path).get("verifyOfferId")
     if not verify_id:
-        return {
-            "skill": "fr-newapi-search",
-            "status": "failure",
-            "action": "order",
-            "message": "缺少 verify_offer_id",
-        }
+        return failure_envelope(
+            "order",
+            "请先完成校验（verify）后再生单。",
+            agent_only={"detail": "缺少 verify_offer_id"},
+        )
 
     partner = args.partner_order_no or f"SKILL-{int(time.time())}"
     raw = booking(
