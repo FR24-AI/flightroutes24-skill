@@ -12,7 +12,7 @@ if str(_ROOT) not in sys.path:
 from config import (  # noqa: E402
     REGISTER_PORTAL_URL,
     SEARCH_ONLY_HINT,
-    USER_BOOKING_ONBOARDING,
+    USER_BOOKING_AGENT_HINT,
     USER_BOOKING_USER_MESSAGE,
     booking_required_payload,
     is_booking_ready,
@@ -135,7 +135,7 @@ def format_search_data(raw: dict, search_mode: str) -> dict[str, Any]:
         "remainingQuota": summary.get("remainingQuota"),
         "dailyLimit": summary.get("dailyLimit"),
         "registerPortalUrl": REGISTER_PORTAL_URL if not booking_enabled else None,
-        "bookingConfigHint": USER_BOOKING_ONBOARDING if not booking_enabled else None,
+        "bookingConfigHint": USER_BOOKING_AGENT_HINT if not booking_enabled else None,
         "workflowSteps": BOOKING_WORKFLOW_STEPS if booking_ready else None,
         "message": "\n".join(lines),
     }
@@ -165,7 +165,7 @@ def format_verify_data(
     code = str(raw.get("code", ""))
     if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
         out = booking_required_payload(step="verify")
-        out["message"] = raw.get("message") or USER_BOOKING_ONBOARDING
+        out["message"] = raw.get("message") or USER_BOOKING_USER_MESSAGE
         if raw.get("detail"):
             out["detail"] = raw.get("detail")
         return out
@@ -234,7 +234,7 @@ def format_order_data(raw: dict) -> dict[str, Any]:
     code = str(raw.get("code", ""))
     if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
         out = booking_required_payload(step="order")
-        out["message"] = raw.get("message") or USER_BOOKING_ONBOARDING
+        out["message"] = raw.get("message") or USER_BOOKING_USER_MESSAGE
         return out
 
     success = _is_success(code)

@@ -31,7 +31,7 @@ from config import (  # noqa: E402
     NEWAPI_SKIP_IP_WHITELIST,
     PRICING_PATH,
     SHOPPING_PATH,
-    USER_BOOKING_ONBOARDING,
+    USER_BOOKING_USER_MESSAGE,
     booking_required_payload,
     is_newapi_configured,
 )
@@ -93,7 +93,7 @@ def skill_shopping(payload: dict) -> dict:
     if is_newapi_configured():
         err = _require_newapi_secrets()
         if err:
-            return {"code": "CONFIG_REQUIRED", "message": USER_BOOKING_ONBOARDING, "detail": err}
+            return {"code": "CONFIG_REQUIRED", "message": USER_BOOKING_USER_MESSAGE, "detail": err}
         headers["appkey"] = NEWAPI_APP_KEY
         headers["Accept-Encoding"] = "gzip"
         if NEWAPI_SKIP_AUTH:

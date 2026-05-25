@@ -14,7 +14,8 @@ metadata:
 
 > 安装见 **[INSTALL.md](./INSTALL.md)**。预订流程见 **[references/booking.md](./references/booking.md)**。  
 > **对用户展示与下载**见 **[references/output-rules.md](./references/output-rules.md)**（仅用 `userView`，勿暴露 `agentOnly`）。  
-> 网关/联调配置见 **[references/setup-maintainer.md](./references/setup-maintainer.md)**（**勿**向用户展示）。
+> **用户问如何配置 appkey** → 只读 **[references/user-appkey-config.md](./references/user-appkey-config.md)**。  
+> 维护者联调见 **[references/setup-maintainer.md](./references/setup-maintainer.md)**（**禁止**对用户展示或口述）。
 
 ## 双模式
 
@@ -60,6 +61,13 @@ metadata:
 5. `order --user-confirmed`
 
 禁止：未确认乘客就 verify；未确认就 order；向用户展示联调环境变量、`setup-maintainer.md` 内容或演示乘客自动填充。
+
+## 用户问「如何配置 appkey / 采购密钥」（必须遵守）
+
+1. **只按** [references/user-appkey-config.md](./references/user-appkey-config.md) 回答（Windows 用户环境变量 + 重启 Claude Code + 本机验证命令）。
+2. **禁止**提及或写出：`FR_NEWAPI_SKIP_IP_WHITELIST`、`FR_NEWAPI_SKIP_AUTH`、跳过 IP 白名单、跳过签名验证、deve 联调专用说明。
+3. **禁止**让用户在对话里发送 APPKEY / 签名密钥 / AES 密钥明文；只引导用户在本机配置。
+4. 维护者才需要联调开关时，Agent **自行**读 `setup-maintainer.md`，**不得**把其中内容复述给用户。
 
 ## 命令速查
 

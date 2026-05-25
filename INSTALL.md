@@ -52,6 +52,7 @@ fr-newapi-search/
 └── references/
     ├── places.json
     ├── output-rules.md
+    ├── user-appkey-config.md
     ├── setup-maintainer.md
     └── booking.md
 ```
@@ -85,7 +86,8 @@ fr-newapi-search/
 
 演示查价：**不要**设置采购相关变量。
 
-采购搜/订：在 Windows「用户环境变量」或当前终端设置（改用户变量后需重启 Cursor），变量名与 **deve 联调可选项** 见 **[references/setup-maintainer.md](./references/setup-maintainer.md)**（勿在 Agent 对话中向最终用户展示该文档内容）。
+采购搜/订：按 **[references/user-appkey-config.md](./references/user-appkey-config.md)** 配置（对用户说明用）。  
+维护者 **deve 联调可选项** 见 **[references/setup-maintainer.md](./references/setup-maintainer.md)**（勿在 Agent 对话中展示）。
 
 验证：
 

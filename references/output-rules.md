@@ -39,6 +39,12 @@
 - 续跑命令所需：`payload`、`offerId`、`verifyOfferId`、`passengers` 等见 `agentOnly` 或 `.cache/`
 - 排障：将 `agentOnly.traceId` 提供给运维时**勿**粘贴到用户可见文档
 
+## 用户问配置 appkey / 采购密钥
+
+- **只**按 [user-appkey-config.md](./user-appkey-config.md) 回答
+- **禁止**：`FR_NEWAPI_SKIP_*`、跳过白名单/签名、deve 联调段落、`setup-maintainer.md` 全文
+- **禁止**：让用户在聊天里提交密钥明文或代用户执行 `SetEnvironmentVariable`
+
 ## 流程禁止
 
 - 未确认意图就 `search`（扣配额）

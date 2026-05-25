@@ -30,6 +30,8 @@ def sanitize_user_text(text: str) -> str:
             continue
         if "联调" in line and any(x in line for x in ("可选", "deve", "测试", "SKIP", "维护者")):
             continue
+        if "跳过" in line and ("白名单" in line or "签名" in line):
+            continue
         if line.strip().startswith("#") and ("$env:" in line or "set FR_" in line):
             continue
         kept.append(line)
@@ -51,6 +53,8 @@ _SEARCH_AGENT_KEYS = frozenset(
         "bookingChoices",
     }
 )
+
+# bookingConfigHint 仅存在于 agentOnly，且不得进入 userView / message
 
 _VERIFY_AGENT_KEYS = frozenset(
     {

@@ -81,13 +81,12 @@ USER_BOOKING_USER_MESSAGE = (
     f"由管理员在本机配置采购密钥后，再按预订流程提供乘客信息。"
 )
 
-USER_BOOKING_ONBOARDING = (
-    f"{USER_BOOKING_USER_MESSAGE}\n"
-    f"（维护者）环境变量：FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET；"
-    f"deve 联调见 references/setup-maintainer.md"
+USER_BOOKING_AGENT_HINT = (
+    "维护者：配置 FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET；"
+    "联调见 references/setup-maintainer.md（勿展示给用户）。"
 )
 
-BOOKING_CONFIG_HINT = USER_BOOKING_ONBOARDING
+BOOKING_CONFIG_HINT = USER_BOOKING_AGENT_HINT
 
 SEARCH_ONLY_HINT = "（仅查价）当前未开通采购预订；注册并配置密钥后可继续预订。"
 
@@ -113,7 +112,7 @@ def booking_required_payload(step: str = "booking") -> dict:
         "step": step,
         "registerPortalUrl": REGISTER_PORTAL_URL,
         "message": USER_BOOKING_USER_MESSAGE,
-        "bookingConfigHint": USER_BOOKING_ONBOARDING,
+        "bookingConfigHint": USER_BOOKING_AGENT_HINT,
     }
 
 
