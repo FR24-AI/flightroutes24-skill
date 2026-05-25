@@ -115,7 +115,7 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
 
 
 DATE_PART = (
-    r"\d{4}-\d{2}-\d{2}|\d+月\d+日|明天|后天|今天|今日|明日|"
+    r"\d{4}-\d{2}-\d{2}|\d+月\d+[日号]|明天|后天|今天|今日|明日|"
     r"(?:本|下)周[一二三四五六日天]|下星期[一二三四五六日天]|本星期[一二三四五六日天]|"
     r"下周|本周|下星期|本星期"
 )
