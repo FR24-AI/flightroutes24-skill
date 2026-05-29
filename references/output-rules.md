@@ -11,7 +11,7 @@
 ## 搜索 search 成功后
 
 - 用表格或分条列出 **直飞最低**、**中转最低**（有则展示）
-- 每条包含：航线、航班号、**人均成人价**（注明测试环境演示价）、**退票/改期摘要**、**行李摘要**
+- 每条包含：航线、航班号、**人均成人价**（注明测试环境演示价）、**退票/改期摘要**、**行李摘要**、**报价ID**（`quoteId`，便于用户后续确认和排查）
 - 可展示 **今日剩余搜索次数**（`remainingQuota` / `dailyLimit`）
 - 多条可订时，请用户选择「直飞」或「中转」
 
@@ -29,7 +29,7 @@
 ## 预订
 
 - **parse-passengers**：只展示 `passengerDisplay`、`contactDisplay` 与确认话术
-- **verify / order**：展示 `orderPreview`（行程、退改、乘客回显）及订单号等业务字段
+- **verify / order**：展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）及订单号等业务字段
 - **禁止**向用户展示：证件明文 API 结构、`passengerRawMappings`、`contactRaw`
 
 ## 禁止写入用户下载 / 对外展示
@@ -40,7 +40,7 @@
 | 内部状态 | `code`、`searchMode`、`workflowSteps`、`workflowStep` |
 | 密钥与路径 | `clientKey`、`payloadFile`、`.cache/` 路径、完整 `payload` |
 | 原始 API | 完整 `ApiSearchRs`、`data.offers` 全量列表 |
-| 预订内部 ID | `verifyOfferId`、`offerId`（用户只需说直飞/中转或航班号） |
+| 预订内部 ID | `verifyOfferId`、`offerId`（用 `quoteId` 报价ID 代替，用户可看到） |
 | 内部测试与维护材料 | 测试报告、维护文档全文、非生产网关说明 |
 | 环境变量名 | 勿向用户列出采购/网关相关的系统变量名 |
 | 示例姓名 | 对用户说明时使用 **张三**（儿童示例可用 **张小三**） |

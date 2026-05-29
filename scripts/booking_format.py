@@ -56,7 +56,7 @@ def _offer_block(label: str, offer: dict | None) -> dict[str, Any] | None:
         return None
     return {
         "label": label,
-        "offerId": offer.get("offerId"),
+        "offerId": str(offer["offerId"]) if offer.get("offerId") is not None else None,
         "route": offer.get("route"),
         "flights": offer.get("flights"),
         "totalPrice": offer.get("totalPrice"),
@@ -217,7 +217,7 @@ def format_verify_data(
     data = raw.get("data") or {}
     offers = data.get("offer") or []
     offer = offers[0] if offers else {}
-    verify_offer_id = offer.get("offerId")
+    verify_offer_id = str(offer["offerId"]) if offer.get("offerId") is not None else None
 
     lines: list[str] = []
     if success:

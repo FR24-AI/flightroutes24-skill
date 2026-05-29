@@ -204,7 +204,7 @@ def _build_offer_summary(
     if segments_out:
         route = f"{segments_out[0]['depAirport']} → {segments_out[-1]['arrAirport']}"
     return {
-        "offerId": offer.get("offerId"),
+        "offerId": str(offer["offerId"]) if offer.get("offerId") is not None else None,
         "flightCategory": category,
         "flightCategoryLabel": category_label,
         "totalPrice": price,

@@ -65,9 +65,10 @@ metadata:
 
 1. **解析**：`scripts/nl_to_search.py parse --text "..."`（不消耗演示日配额）  
    → 用 `userView` 确认行程、日期、人数、舱位。
-2. **搜索**：用户确认后  
-   `scripts/skill_search_client.py search --payload-file .cache/pending_search.json --selection direct|transfer`  
-   → 用 `userView.directLowest`、`transferLowest` 展示直飞/中转最低价（含退改、行李摘要）。
+2. **搜索**：用户确认后
+   `scripts/skill_search_client.py search --payload-file .cache/pending_search.json --selection direct|transfer`
+   → 用 `userView.directLowest`、`transferLowest` 展示直飞/中转最低价（含退改、行李摘要、**报价ID** `quoteId`）。
+   → 每条报价**必须展示 `quoteId`（报价ID）**，以便用户后续确认和排查。
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
 
 ---
@@ -95,7 +96,7 @@ metadata:
 | 1 | 用户选择直飞或中转 → `search --selection direct\|transfer` |
 | 2 | `skill_booking_client.py parse-passengers --text "..."` → 展示 `passengerDisplay`、`contactDisplay`（示例姓名：**张三**） |
 | 3 | 用户回复「**乘客信息确认无误**」→ `verify --passenger-confirmed` |
-| 4 | 展示 `orderPreview`（行程、退改、乘客回显）→ 用户回复「**确认生单**」 |
+| 4 | 展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」 |
 | 5 | `order --user-confirmed` |
 
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
@@ -125,6 +126,9 @@ metadata:
 | `scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
 | `scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 |
 | `scripts/skill_booking_client.py order --user-confirmed` | 生单 |
+| `scripts/config_keys.py set --appkey ... --sign-secret ... --aes-secret ...` | 配置采购密钥 |
+| `scripts/config_keys.py status` | 查看配置状态 |
+| `scripts/config_keys.py clear` | 清除本地密钥配置 |
 
 ---
 

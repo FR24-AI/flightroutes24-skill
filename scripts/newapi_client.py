@@ -1,6 +1,7 @@
 """export HTTP：Skill 搜索 + NewApi 校验/生单。"""
 from __future__ import annotations
 
+import gzip
 import json
 import secrets
 import sys
@@ -60,6 +61,14 @@ def ensure_client_key() -> str:
     return key
 
 
+def _decompress_response(resp) -> bytes:
+    """读取 HTTP 响应体，自动解压 gzip。"""
+    data = resp.read()
+    if resp.headers.get("Content-Encoding") == "gzip":
+        data = gzip.decompress(data)
+    return data
+
+
 def _http_post(url: str, body: dict, headers: dict[str, str], timeout: int = 120) -> dict:
     req = urllib.request.Request(
         url,
@@ -69,9 +78,14 @@ def _http_post(url: str, body: dict, headers: dict[str, str], timeout: int = 120
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return json.loads(_decompress_response(resp).decode("utf-8"))
     except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace")
+        raw_bytes = e.read()
+        try:
+            raw_bytes = gzip.decompress(raw_bytes)
+        except Exception:
+            pass
+        raw = raw_bytes.decode("utf-8", errors="replace")
         if raw.strip():
             try:
                 return json.loads(raw)

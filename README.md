@@ -74,11 +74,23 @@ python scripts/skill_search_client.py search --payload-file .cache/pending_searc
 |--------|------|------|
 | `EXPORT_BASE_URL` | `config.py` | export 网关根地址 |
 | `GRAY_HEADER` | `config.py` | 灰度路由请求头（如 `ww`） |
-| `FR_NEWAPI_APPKEY` | 本机用户环境变量 | 采购 APPKEY |
-| `FR_NEWAPI_SIGN_SECRET` | 本机用户环境变量 | SHA512 签名密钥 |
-| `FR_NEWAPI_AES_SECRET` | 本机用户环境变量 | 16 字节 AES（预订加密乘客） |
+| `FR_NEWAPI_APPKEY` | 环境变量 / `.env` / `keys.json` | 采购 APPKEY |
+| `FR_NEWAPI_SIGN_SECRET` | 环境变量 / `.env` / `keys.json` | SHA512 签名密钥 |
+| `FR_NEWAPI_AES_SECRET` | 环境变量 / `.env` / `keys.json` | 16 字节 AES（预订加密乘客） |
+
+采购密钥支持三种配置方式（优先级从高到低）：
+
+1. **环境变量**（需重启 Agent 生效）
+2. **`.env` 文件**（Skill 根目录，无需重启）
+3. **`config_keys.py set`**（写入 `.cache/keys.json`，无需重启）
 
 检查采购配置是否生效：
+
+```bash
+python scripts/config_keys.py status
+```
+
+或：
 
 ```bash
 python -c "import config; print('configured:', config.is_newapi_configured()); print('booking_ready:', config.is_booking_ready())"
@@ -127,6 +139,9 @@ fr24-ai/
 | `python scripts/skill_booking_client.py parse-passengers --text "..."` | 解析乘客 | — |
 | `python scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 | — |
 | `python scripts/skill_booking_client.py order --user-confirmed` | 生单 | — |
+| `python scripts/config_keys.py status` | 查看密钥配置状态 | — |
+| `python scripts/config_keys.py set --appkey ... --sign-secret ... --aes-secret ...` | 配置采购密钥 | — |
+| `python scripts/config_keys.py clear` | 清除本地密钥配置 | — |
 
 Agent 须先向用户确认行程再执行 `search`；预订须两次用户确认（乘客、生单）。详见 [SKILL.md](./SKILL.md)。
 

@@ -109,7 +109,7 @@ def build_booking_choice(offer: dict[str, Any] | None, key: str, label: str) -> 
     return {
         "key": key,
         "label": label,
-        "offerId": offer.get("offerId"),
+        "offerId": str(offer["offerId"]) if offer.get("offerId") is not None else None,
         "route": offer.get("route"),
         "flights": offer.get("flights"),
         "totalPrice": offer.get("totalPrice"),

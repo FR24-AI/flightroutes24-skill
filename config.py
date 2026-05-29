@@ -1,6 +1,7 @@
 """Skill 配置（Skill 搜索 + NewApi 预订）。"""
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +11,8 @@ CLIENT_KEY_FILE = CACHE_DIR / "skill_client.json"
 PENDING_PAYLOAD_FILE = CACHE_DIR / "pending_search.json"
 BOOKING_CONTEXT_FILE = CACHE_DIR / "booking_context.json"
 PASSENGERS_FILE = CACHE_DIR / "passengers.json"
+KEYS_FILE = CACHE_DIR / "keys.json"
+ENV_FILE = SKILL_DIR / ".env"
 
 CLIENT_KEY_HEADER = "X-Skill-Client-Key"
 DAILY_LIMIT = 10
@@ -29,20 +32,97 @@ NEWAPI_SHOPPING_PATH = "/api/new/shopping"
 PRICING_PATH = "/api/new/pricing"
 BOOKING_PATH = "/api/new/booking"
 
-# NewApi 采购密钥（环境变量，勿写入仓库）
-NEWAPI_APP_KEY = os.environ.get("FR_NEWAPI_APPKEY", "").strip()
-NEWAPI_SIGN_SECRET = os.environ.get("FR_NEWAPI_SIGN_SECRET", "").strip()
-NEWAPI_AES_SECRET = os.environ.get("FR_NEWAPI_AES_SECRET", "").strip()
-NEWAPI_SKIP_AUTH = os.environ.get("FR_NEWAPI_SKIP_AUTH", "").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-)
-NEWAPI_SKIP_IP_WHITELIST = os.environ.get("FR_NEWAPI_SKIP_IP_WHITELIST", "").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-)
+
+# ---------------------------------------------------------------------------
+# 多源配置读取：环境变量 > .env 文件 > .cache/keys.json
+# ---------------------------------------------------------------------------
+
+_ENV_TO_JSON_KEYS = {
+    "FR_NEWAPI_APPKEY": "appkey",
+    "FR_NEWAPI_SIGN_SECRET": "signSecret",
+    "FR_NEWAPI_AES_SECRET": "aesSecret",
+    "FR_NEWAPI_SKIP_AUTH": "skipAuth",
+    "FR_NEWAPI_SKIP_IP_WHITELIST": "skipIpWhitelist",
+}
+
+_dotenv_cache: dict[str, str] | None = None
+_keys_json_cache: dict[str, str] | None = None
+
+
+def _load_dotenv() -> dict[str, str]:
+    """解析 .env 文件（KEY=VALUE，忽略 # 注释和空行）。"""
+    global _dotenv_cache
+    if _dotenv_cache is not None:
+        return _dotenv_cache
+    result: dict[str, str] = {}
+    if not ENV_FILE.is_file():
+        _dotenv_cache = result
+        return result
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        result[key.strip()] = value.strip().strip("\"'")
+    _dotenv_cache = result
+    return result
+
+
+def _load_keys_json() -> dict[str, str]:
+    """读取 .cache/keys.json。"""
+    global _keys_json_cache
+    if _keys_json_cache is not None:
+        return _keys_json_cache
+    result: dict[str, str] = {}
+    if KEYS_FILE.is_file():
+        try:
+            data = json.loads(KEYS_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                result = {str(k): str(v) for k, v in data.items()}
+        except (json.JSONDecodeError, OSError):
+            pass
+    _keys_json_cache = result
+    return result
+
+
+def _read_config(env_name: str, default: str = "") -> str:
+    """按优先级读取配置：环境变量 > .env 文件 > .cache/keys.json。"""
+    # 1. 环境变量（最高优先级）
+    val = os.environ.get(env_name, "").strip()
+    if val:
+        return val
+    # 2. .env 文件
+    json_key = _ENV_TO_JSON_KEYS.get(env_name, env_name)
+    val = _load_dotenv().get(env_name, "").strip()
+    if val:
+        return val
+    # 3. .cache/keys.json
+    val = _load_keys_json().get(json_key, "").strip()
+    if val:
+        return val
+    return default
+
+
+def _read_config_bool(env_name: str) -> bool:
+    """读取布尔配置（字符串 '1'/'true'/'yes' 视为 True）。"""
+    return _read_config(env_name).lower() in ("1", "true", "yes")
+
+
+def reload_config() -> None:
+    """清除内部缓存，下次读取时重新加载 .env 和 keys.json。"""
+    global _dotenv_cache, _keys_json_cache
+    _dotenv_cache = None
+    _keys_json_cache = None
+
+
+# NewApi 采购密钥（支持多源读取，勿写入仓库）
+NEWAPI_APP_KEY = _read_config("FR_NEWAPI_APPKEY")
+NEWAPI_SIGN_SECRET = _read_config("FR_NEWAPI_SIGN_SECRET")
+NEWAPI_AES_SECRET = _read_config("FR_NEWAPI_AES_SECRET")
+NEWAPI_SKIP_AUTH = _read_config_bool("FR_NEWAPI_SKIP_AUTH")
+NEWAPI_SKIP_IP_WHITELIST = _read_config_bool("FR_NEWAPI_SKIP_IP_WHITELIST")
 FR24_API_HEADER = "fr24-api"
 
 REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"

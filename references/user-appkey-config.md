@@ -12,7 +12,29 @@
    - **AES 密钥**（16 字节，用于乘客信息加密）
 2. 演示查价无需配置；仅 **采购搜索 + 预订** 需要。
 
-## 推荐：Windows「用户环境变量」（图形界面）
+## 方式一：命令行配置（推荐，无需重启 Agent）
+
+在 Skill 目录下运行（将参数替换为真实值，**勿在聊天中发送**）：
+
+```bash
+python scripts/config_keys.py set --appkey "你的APPKEY" --sign-secret "你的签名密钥" --aes-secret "你的AES密钥"
+```
+
+配置后**无需重启** Claude Code，下次搜索即自动使用采购账号。
+
+## 方式二：`.env` 文件（无需重启 Agent）
+
+在 Skill 根目录创建 `.env` 文件（与 `config.py` 同级）：
+
+```
+FR_NEWAPI_APPKEY=你的APPKEY
+FR_NEWAPI_SIGN_SECRET=你的签名密钥
+FR_NEWAPI_AES_SECRET=你的AES密钥
+```
+
+配置后**无需重启** Claude Code。`.env` 文件已被 `.gitignore` 忽略，不会被提交到版本库。
+
+## 方式三：Windows「用户环境变量」（需重启 Agent）
 
 1. `Win + R` → 输入 `sysdm.cpl` → 回车  
 2. **高级** → **环境变量**  
@@ -40,7 +62,13 @@
 
 ## 验证（用户可在本机执行）
 
-在 Skill 目录（如 `~/.claude/skills/fr24-ai`）打开**新**终端：
+在 Skill 目录（如 `~/.claude/skills/fr24-ai`）打开终端：
+
+```bash
+python scripts/config_keys.py status
+```
+
+或：
 
 ```powershell
 python -c "import config; print('configured:', config.is_newapi_configured()); print('booking_ready:', config.is_booking_ready())"
@@ -53,7 +81,9 @@ python -c "import config; print('configured:', config.is_newapi_configured()); p
 
 若为 `False`，检查变量是否在 **用户变量**、名称是否拼写正确、是否已重启 Claude Code。
 
+## 配置优先级
+
+当多个方式同时配置时，按以下优先级读取：**环境变量 > `.env` 文件 > `.cache/keys.json`**。
+
 ## Agent 禁止事项
 
-- 不要向用户说明「跳过 IP 白名单 / 跳过签名验证」等内部配置  
-- 不要让用户把密钥发到对话里「帮你设置」

@@ -104,25 +104,29 @@ def _pick_keys(obj: dict[str, Any] | None, keys: frozenset[str]) -> dict[str, An
 
 
 def user_offer(offer: dict[str, Any] | None) -> dict[str, Any] | None:
-    return _pick_keys(offer, _USER_OFFER_KEYS)
+    out = _pick_keys(offer, _USER_OFFER_KEYS)
+    if out and offer.get("offerId"):
+        out["quoteId"] = offer["offerId"]
+    return out
 
 
 def user_booking_choices(choices: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    """用户可选直飞/中转，不含 offerId。"""
+    """用户可选直飞/中转，含 quoteId 以便 Agent 准确对应。"""
     out: list[dict[str, Any]] = []
     for c in choices or []:
         if not isinstance(c, dict):
             continue
-        out.append(
-            {
-                "key": c.get("key"),
-                "label": c.get("label"),
-                "route": c.get("route"),
-                "flights": c.get("flights"),
-                "totalPrice": c.get("totalPrice"),
-                "currency": c.get("currency"),
-            }
-        )
+        item = {
+            "key": c.get("key"),
+            "label": c.get("label"),
+            "route": c.get("route"),
+            "flights": c.get("flights"),
+            "totalPrice": c.get("totalPrice"),
+            "currency": c.get("currency"),
+        }
+        if c.get("offerId"):
+            item["quoteId"] = c["offerId"]
+        out.append(item)
     return out
 
 
@@ -246,6 +250,8 @@ def verify_user_view(internal: dict[str, Any]) -> dict[str, Any]:
         "requiresOrderConfirmation": internal.get("requiresOrderConfirmation"),
         "requiresResearch": internal.get("requiresResearch"),
     }
+    if internal.get("verifyOfferId"):
+        user["quoteId"] = internal["verifyOfferId"]
     if internal.get("success"):
         user["message"] = internal.get("orderConfirmPrompt") or internal.get("message", "")
     else:
