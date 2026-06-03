@@ -3,6 +3,8 @@ name: fr24-ai
 description: >
   Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping；
   配置采购密钥后支持搜索、校验、生单。触发词：查航班、搜机票、预订、生单、飞。
+  Keywords: flight search, search flights, book flight, book ticket, air ticket,
+  check fare, flight price, buy ticket, international flight, one-way, round trip.
 metadata:
   author: FR24
   project: FR24-AI
