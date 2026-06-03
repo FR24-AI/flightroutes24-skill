@@ -168,7 +168,7 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
             continue
         lines.append(
             f"【{title_zh} / {title_en}】{offer.get('route', '')} {offer.get('flights', '')} "
-            f"≈ {offer.get('totalPrice')} {offer.get('currency', '')}/pax"
+            f"{offer.get('totalPrice')} {offer.get('currency', '')}/pax"
         )
         lines.extend(_refund_baggage_lines(offer))
 

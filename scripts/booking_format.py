@@ -132,12 +132,12 @@ def format_search_data(
         if direct:
             lines.append(
                 f"【直飞最低】{direct['route']} {direct['flights']} "
-                f"约 {direct['totalPrice']} {direct['currency']}/人"
+                f"{direct['totalPrice']} {direct['currency']}/人"
             )
         if transfer:
             lines.append(
                 f"【中转最低】{transfer['route']} {transfer['flights']} "
-                f"约 {transfer['totalPrice']} {transfer['currency']}/人"
+                f"{transfer['totalPrice']} {transfer['currency']}/人"
             )
         if selection_required(choices):
             lines.append(BOOKING_SELECTION_USER_PROMPT)
@@ -224,7 +224,7 @@ def format_verify_data(
     lines: list[str] = []
     if success:
         lines.append(
-            f"校验成功 / Verified: 总价约 / total ≈ {offer.get('totalPrice')} {offer.get('currency', '')}。"
+            f"校验成功 / Verified: 总价 / total {offer.get('totalPrice')} {offer.get('currency', '')}。"
         )
         lines.append(ORDER_CONFIRM_USER_PROMPT)
     else:
