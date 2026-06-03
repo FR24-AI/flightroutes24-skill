@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-GENDER_LABEL = {"M": "男", "F": "女"}
-PAX_TYPE_LABEL = {"ADT": "成人", "CHD": "儿童", "INF": "婴儿"}
+GENDER_LABEL = {"M": "男/Male", "F": "女/Female"}
+PAX_TYPE_LABEL = {"ADT": "成人/Adult", "CHD": "儿童/Child", "INF": "婴儿/Infant"}
 
 
 def _field(label: str, user_input: str, api_value: str, *, extra: str | None = None) -> dict[str, str]:
@@ -31,23 +31,23 @@ def build_passenger_display(
         py_note = f"拼音 {py}" if py else None
         fields: list[dict[str, str]] = [
             _field(
-                "姓名",
+                "姓名/Name",
                 raw.get("nameRaw", pax.get("name", "")),
                 pax.get("name", ""),
                 extra=py_note,
             ),
-            _field("性别", raw.get("genderRaw", GENDER_LABEL.get(pax.get("gender", "M"), "")), pax.get("gender", "")),
-            _field("出生日期", raw.get("birthdayRaw", pax.get("birthday", "")), pax.get("birthday", "")),
-            _field("证件类型", "护照", pax.get("cardType", "PP")),
-            _field("证件号", raw.get("cardNumRaw", pax.get("cardNum", "")), pax.get("cardNum", "")),
+            _field("性别/Gender", raw.get("genderRaw", GENDER_LABEL.get(pax.get("gender", "M"), "")), pax.get("gender", "")),
+            _field("出生日期/DOB", raw.get("birthdayRaw", pax.get("birthday", "")), pax.get("birthday", "")),
+            _field("证件类型/DocType", "护照/Passport", pax.get("cardType", "PP")),
+            _field("证件号/DocNo", raw.get("cardNumRaw", pax.get("cardNum", "")), pax.get("cardNum", "")),
             _field(
-                "证件有效期",
+                "证件有效期/Expiry",
                 raw.get("expiryRaw", pax.get("cardExpiryDate", "")),
                 pax.get("cardExpiryDate", ""),
             ),
-            _field("国籍", raw.get("nationalityRaw", pax.get("nationality", "CN")), pax.get("nationality", "CN")),
+            _field("国籍/Nationality", raw.get("nationalityRaw", pax.get("nationality", "CN")), pax.get("nationality", "CN")),
             _field(
-                "乘客类型",
+                "乘客类型/PaxType",
                 PAX_TYPE_LABEL.get(pax.get("paxType", "ADT"), pax.get("paxType", "")),
                 pax.get("paxType", "ADT"),
             ),
@@ -71,10 +71,10 @@ def build_contact_display(
 ) -> dict[str, Any]:
     r = raw or {}
     fields = [
-        _field("联系人姓名", r.get("nameRaw", contact.get("agentName", "")), contact.get("agentName", "")),
-        _field("手机", r.get("mobileRaw", contact.get("mobile", "")), contact.get("mobile", "")),
-        _field("邮箱", r.get("emailRaw", contact.get("agentEmail", "")), contact.get("agentEmail", "")),
-        _field("区号", "86", contact.get("areaCode", "86")),
+        _field("联系人/Contact", r.get("nameRaw", contact.get("agentName", "")), contact.get("agentName", "")),
+        _field("手机/Phone", r.get("mobileRaw", contact.get("mobile", "")), contact.get("mobile", "")),
+        _field("邮箱/Email", r.get("emailRaw", contact.get("agentEmail", "")), contact.get("agentEmail", "")),
+        _field("区号/AreaCode", "86", contact.get("areaCode", "86")),
     ]
     return {
         "summaryLine": (
@@ -92,26 +92,23 @@ def _summary_line(pax: dict[str, Any], raw: dict[str, Any]) -> str:
     g = raw.get("genderRaw") or GENDER_LABEL.get(pax.get("gender", "M"), "")
     return (
         f"{name_ui}{py_part} {g} {pax.get('birthday')} "
-        f"护照{pax.get('cardNum')} {pax.get('cardExpiryDate')}到期"
+        f"Passport/护照 {pax.get('cardNum')} exp {pax.get('cardExpiryDate')}"
     )
 
 
 def format_display_message(passenger_display: list[dict], contact_display: dict) -> str:
-    lines = ["请核对乘客与联系人（左侧为您输入，apiValue 为将提交接口的值）：", ""]
+    lines = ["请核对乘客与联系人 / Please verify passenger details (left: your input → right: API value)：", ""]
     for p in passenger_display:
         lines.append(p.get("summaryLine", ""))
         for f in p.get("fields") or []:
             note = f" ({f['note']})" if f.get("note") else ""
-            py = ""
-            if f["label"] == "姓名" and f.get("note") and "拼音" not in f.get("note", ""):
-                py = f" [{f['note']}]"
-            elif f["label"] == "姓名" and f.get("note"):
-                py = f" [{f['note']}]"
             lines.append(f"  - {f['label']}：{f['userInput']} → {f['apiValue']}{note}")
     lines.append("")
     lines.append(contact_display.get("summaryLine", ""))
     for f in contact_display.get("fields") or []:
         lines.append(f"  - {f['label']}：{f['userInput']} → {f['apiValue']}")
     lines.append("")
-    lines.append("若无误请回复「乘客信息确认无误」，再为您校验报价。")
+    lines.append(
+        "若无误请回复「乘客信息确认无误」/ If correct, reply \"passenger info confirmed\""
+    )
     return "\n".join(lines)

@@ -136,9 +136,9 @@ def _refund_baggage_lines(offer: dict[str, Any] | None) -> list[str]:
     lines: list[str] = []
     rc = offer.get("refundChange") or {}
     if rc.get("refundText"):
-        lines.append(f"退票：{rc['refundText']}")
+        lines.append(f"退票/Refund：{rc['refundText']}")
     if rc.get("changeText"):
-        lines.append(f"改期：{rc['changeText']}")
+        lines.append(f"改期/Change：{rc['changeText']}")
     for d in rc.get("details") or []:
         if d and d not in lines:
             lines.append(str(d))
@@ -150,27 +150,30 @@ def _refund_baggage_lines(offer: dict[str, Any] | None) -> list[str]:
 def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -> str:
     lines: list[str] = []
     if demo:
-        lines.append("（测试环境演示价，人均成人价）")
+        lines.append("（测试环境演示价，人均成人价 / demo price, per adult）")
     quota = user_view.get("remainingQuota")
     if quota is not None:
         limit = user_view.get("dailyLimit")
         if limit is not None:
-            lines.append(f"今日剩余搜索次数：{quota}/{limit}")
+            lines.append(f"今日剩余搜索次数 / remaining searches today: {quota}/{limit}")
         else:
-            lines.append(f"今日剩余搜索次数：{quota}")
+            lines.append(f"今日剩余搜索次数 / remaining searches today: {quota}")
 
-    for key, title in (("directLowest", "直飞最低"), ("transferLowest", "中转最低")):
+    for key, title_zh, title_en in (
+        ("directLowest", "直飞最低", "Direct (lowest)"),
+        ("transferLowest", "中转最低", "Connecting (lowest)"),
+    ):
         offer = user_view.get(key)
         if not offer:
             continue
         lines.append(
-            f"【{title}】{offer.get('route', '')} {offer.get('flights', '')} "
-            f"约 {offer.get('totalPrice')} {offer.get('currency', '')}/人"
+            f"【{title_zh} / {title_en}】{offer.get('route', '')} {offer.get('flights', '')} "
+            f"≈ {offer.get('totalPrice')} {offer.get('currency', '')}/pax"
         )
         lines.extend(_refund_baggage_lines(offer))
 
     if user_view.get("selectionRequired"):
-        lines.append("请先告知要订「直飞」或「中转」。")
+        lines.append('请告知要订「直飞」或「中转」/ Reply "direct" or "connecting".')
     return "\n".join(lines) if lines else user_view.get("message") or ""
 
 
@@ -205,7 +208,7 @@ def search_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
 def parse_user_view(intent_summary: str, payload: dict[str, Any]) -> dict[str, Any]:
     legs = payload.get("searchLegs") or []
     prefs = payload.get("preferences") or {}
-    trip = "往返" if len(legs) >= 2 else "单程"
+    trip = "往返 (Round-trip)" if len(legs) >= 2 else "单程 (One-way)"
     leg_rows = [
         {
             "origin": leg.get("origin"),
@@ -214,7 +217,12 @@ def parse_user_view(intent_summary: str, payload: dict[str, Any]) -> dict[str, A
         }
         for leg in legs
     ]
-    cabin_map = {"Y": "经济舱", "C": "商务舱", "F": "头等舱", "P": "超级经济舱"}
+    cabin_map = {
+        "Y": "经济舱 (Economy)",
+        "C": "商务舱 (Business)",
+        "F": "头等舱 (First)",
+        "P": "超级经济舱 (Premium Economy)",
+    }
     cabin = cabin_map.get(str(prefs.get("cabin", "Y")).upper(), prefs.get("cabin", "Y"))
     filters: dict[str, Any] = {}
     if prefs.get("preferredCarrier"):
@@ -247,6 +255,8 @@ def verify_user_view(internal: dict[str, Any]) -> dict[str, Any]:
         "contactDisplay": internal.get("contactDisplay"),
         "orderPreview": internal.get("orderPreview"),
         "orderConfirmPrompt": internal.get("orderConfirmPrompt"),
+        "orderConfirmPromptEn": internal.get("orderConfirmPromptEn"),
+        "confirmPhraseEn": internal.get("confirmPhraseEn"),
         "requiresOrderConfirmation": internal.get("requiresOrderConfirmation"),
         "requiresResearch": internal.get("requiresResearch"),
     }
@@ -272,7 +282,9 @@ def passengers_user_view(internal: dict[str, Any]) -> dict[str, Any]:
         "contactDisplay": internal.get("contactDisplay"),
         "displayMessage": internal.get("display_message") or internal.get("message"),
         "confirmPhrase": internal.get("confirmPhrase"),
+        "confirmPhraseEn": internal.get("confirmPhraseEn"),
         "passengerConfirmPrompt": internal.get("passengerConfirmPrompt"),
+        "passengerConfirmPromptEn": internal.get("passengerConfirmPromptEn"),
         "message": internal.get("message") or internal.get("display_message"),
     }
 

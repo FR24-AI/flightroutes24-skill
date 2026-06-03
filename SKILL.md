@@ -29,6 +29,19 @@ metadata:
 
 ---
 
+## 语言策略 / Language Policy
+
+- 用户使用中文时，全程中文回复。
+- When the user writes in English, respond entirely in English throughout the conversation.
+- Confirm phrases are accepted in **both languages**:
+  - Passenger info confirmed: 「乘客信息确认无误」or **"passenger info confirmed"**
+  - Place order: 「确认生单」or **"confirm order"**
+- For English users, use "direct flight" / "connecting flight" instead of 直飞/中转, and "Quote ID" instead of 报价ID.
+- Script output `userView.message` may contain Chinese labels — **do not copy them verbatim** when responding in English. Use `confirmPhraseEn` / `passengerConfirmPromptEn` / `orderConfirmPromptEn` from `userView` for the English confirm phrases.
+- `refine` supports English time keywords (morning / afternoon / evening / nonstop) and English airline names (Air China / China Eastern …).
+
+---
+
 ## 服务模式
 
 | 模式 | 条件 | 接口 |
@@ -96,9 +109,9 @@ metadata:
 | 步骤 | 动作 |
 |------|------|
 | 1 | 用户选择直飞或中转 → `search --selection direct\|transfer` |
-| 2 | `skill_booking_client.py parse-passengers --text "..."` → 展示 `passengerDisplay`、`contactDisplay`（示例姓名：**张三**） |
-| 3 | 用户回复「**乘客信息确认无误**」→ `verify --passenger-confirmed` |
-| 4 | 展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」 |
+| 2 | `skill_booking_client.py parse-passengers --text "..."` → 展示 `passengerDisplay`、`contactDisplay`（示例姓名：**张三** / EN: **John Doe**） |
+| 3 | 用户回复「**乘客信息确认无误**」或 **"passenger info confirmed"** → `verify --passenger-confirmed` |
+| 4 | 展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」或 **"confirm order"** |
 | 5 | `order --user-confirmed` |
 
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
@@ -106,7 +119,7 @@ metadata:
 
 ---
 
-## 采购密钥（用户询问时）
+## 采购密钥（用户询问时）/ Procurement Keys (when user asks)
 
 仅依据 [user-appkey-config.md](./references/user-appkey-config.md)：
 
@@ -115,6 +128,8 @@ metadata:
 - 配置后重启 Agent 客户端；
 - **禁止**让用户在对话中发送密钥明文；
 - **禁止**向用户说明内部联调、跳过校验等维护配置。
+
+For English users: guide them to register at [Flightroutes24](https://www.flightroutes24.com/), activate API procurement, and configure keys locally per [user-appkey-config.md](./references/user-appkey-config.md).
 
 ---
 
@@ -134,10 +149,10 @@ metadata:
 
 ---
 
-## 业务限制
+## 业务限制 / Business Constraints
 
-- 支持单程、往返；不支持多段缺口程。
-- 演示模式：每 `clientKey` 每日搜索次数有限（默认 10，以服务端配置为准）。
-- 演示配额用尽（`307901`）：引导用户开通采购并配置密钥（见 `user-appkey-config.md`），勿仅建议「明日再试」。
-- 已配置采购密钥的搜索不扣演示日配额。
-- 生单为真实订单，必须在用户明确确认后提交。
+- 支持单程、往返；不支持多段缺口程。/ Supports one-way and round-trip; multi-city itineraries are not supported.
+- 演示模式：每 `clientKey` 每日搜索次数有限（默认 10，以服务端配置为准）。/ Demo mode: limited searches per `clientKey` per day (default 10).
+- 演示配额用尽（`307901`）：引导用户开通采购并配置密钥（见 `user-appkey-config.md`），勿仅建议「明日再试」。/ When demo quota is exhausted (`307901`): guide user to activate procurement — do not just say "try again tomorrow".
+- 已配置采购密钥的搜索不扣演示日配额。/ Searches with a configured APPKEY do not consume the demo daily quota.
+- 生单为真实订单，必须在用户明确确认后提交。/ Orders are real bookings and must only be submitted after explicit user confirmation.

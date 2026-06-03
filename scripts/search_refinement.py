@@ -22,6 +22,24 @@ CARRIER_ALIASES: dict[str, str] = {
     "春秋": "9C",
 }
 
+# English airline name -> IATA
+CARRIER_ALIASES_EN: dict[str, str] = {
+    "air china": "CA",
+    "china eastern": "MU",
+    "china southern": "CZ",
+    "hainan airlines": "HU",
+    "hainan": "HU",
+    "xiamen air": "MF",
+    "xiamen airlines": "MF",
+    "sichuan airlines": "3U",
+    "shenzhen airlines": "ZH",
+    "shanghai airlines": "FM",
+    "juneyao": "HO",
+    "juneyao airlines": "HO",
+    "spring airlines": "9C",
+    "spring": "9C",
+}
+
 TIME_PERIOD_WINDOWS: dict[str, tuple[str, str]] = {
     "凌晨": ("00:00", "06:00"),
     "早上": ("06:00", "10:00"),
@@ -32,16 +50,37 @@ TIME_PERIOD_WINDOWS: dict[str, tuple[str, str]] = {
     "傍晚": ("17:00", "20:00"),
     "晚上": ("18:00", "23:59"),
     "夜间": ("20:00", "23:59"),
+    # English time periods
+    "early morning": ("00:00", "06:00"),
+    "midnight": ("00:00", "06:00"),
+    "morning": ("06:00", "12:00"),
+    "noon": ("11:00", "13:00"),
+    "midday": ("11:00", "13:00"),
+    "afternoon": ("12:00", "18:00"),
+    "evening": ("17:00", "20:00"),
+    "night": ("18:00", "23:59"),
+    "late night": ("20:00", "23:59"),
 }
 
 _CARRIER_CODE_RE = re.compile(
-    r"(?:要|只要|订|坐|选)?\s*([A-Z]{2})\s*(?:航司|航空|航)?",
+    r"(?:要|只要|订|坐|选)?\s*([A-Z]{2})\s*(?:航司|航空|航|airline|airlines|air)?",
     re.I,
 )
 _CARRIER_ZH_RE = re.compile(
     r"(国航|中国国航|东航|中国东航|南航|中国南航|海航|厦航|川航|深航|上航|吉祥|春秋)"
 )
-_TIME_PERIOD_RE = re.compile(r"(凌晨|早上|上午|中午|午间|下午|傍晚|晚上|夜间)")
+_CARRIER_EN_RE = re.compile(
+    r"(air china|china eastern|china southern|hainan airlines|hainan|"
+    r"xiamen air(?:lines)?|sichuan airlines|shenzhen airlines|shanghai airlines|"
+    r"juneyao(?: airlines)?|spring(?: airlines)?)",
+    re.I,
+)
+_TIME_PERIOD_ZH_RE = re.compile(r"(凌晨|早上|上午|中午|午间|下午|傍晚|晚上|夜间)")
+_TIME_PERIOD_EN_RE = re.compile(
+    r"\b(early morning|midnight|morning|midday|noon|afternoon|evening|late night|night)\b",
+    re.I,
+)
+_TIME_PERIOD_RE = _TIME_PERIOD_ZH_RE  # keep for backward compat
 _TIME_POINT_RE = re.compile(
     r"(?:大约|约|大概)?\s*(\d{1,2})\s*[:：点时]\s*(\d{0,2})?\s*(?:分)?\s*(?:左右|前后|附近)?(?:起飞|出发|走)?"
 )
@@ -61,6 +100,11 @@ def parse_carriers_from_text(text: str) -> list[str]:
         if code and code not in seen:
             seen.add(code)
             found.append(code)
+    for m in _CARRIER_EN_RE.finditer(text):
+        code = CARRIER_ALIASES_EN.get(m.group(1).lower())
+        if code and code not in seen:
+            seen.add(code)
+            found.append(code)
     return found
 
 
@@ -72,10 +116,16 @@ def _hour_window(center_hour: int, *, span: int = 1) -> tuple[str, str]:
 
 def parse_dep_time_window(text: str) -> tuple[dict[str, str] | None, str | None]:
     """解析起飞时段偏好。返回 (depTimeWindow, 展示用标签)。"""
-    for m in _TIME_PERIOD_RE.finditer(text):
+    for m in _TIME_PERIOD_ZH_RE.finditer(text):
         key = m.group(1)
         start, end = TIME_PERIOD_WINDOWS[key]
         return {"from": start, "to": end}, f"{key}起飞"
+    for m in _TIME_PERIOD_EN_RE.finditer(text):
+        key = m.group(1).lower()
+        window = TIME_PERIOD_WINDOWS.get(key)
+        if window:
+            start, end = window
+            return {"from": start, "to": end}, f"{key} departure"
 
     m = _TIME_HALF_RE.search(text)
     if m:
@@ -142,13 +192,17 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
 
     carriers = parse_carriers_from_text(t)
     window, time_label = parse_dep_time_window(t)
-    direct_only = "直飞" in t and "不要直飞" not in t and "非直飞" not in t
+    t_lower = t.lower()
+    direct_only = (
+        ("直飞" in t and "不要直飞" not in t and "非直飞" not in t)
+        or ("nonstop" in t_lower or "non-stop" in t_lower or "direct only" in t_lower or "direct flight" in t_lower)
+    )
 
     if not carriers and not window and not direct_only:
         return (
             payload,
             "",
-            "未能识别细化条件，请说明航司（如 CA/国航）或起飞时段（如中午 12 点、下午起飞）",
+            "未能识别细化条件，请说明航司（如 CA/国航/Air China）或起飞时段（如 morning/afternoon/中午）",
         )
 
     out = copy.deepcopy(payload)

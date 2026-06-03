@@ -132,6 +132,12 @@ USER_BOOKING_USER_MESSAGE = (
     f"由管理员在本机配置采购密钥后，再按预订流程提供乘客信息。"
 )
 
+USER_BOOKING_USER_MESSAGE_EN = (
+    f"Currently in demo search mode. To place a booking, please register at {REGISTER_PORTAL_URL} "
+    f"and activate API procurement, then configure your keys locally and restart Claude Code. "
+    f"Ask 'how to configure appkey' for setup instructions."
+)
+
 USER_BOOKING_AGENT_HINT = (
     "维护者：配置 FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET；"
     "联调见 references/setup-maintainer.md（勿展示给用户）。"
@@ -141,12 +147,22 @@ BOOKING_CONFIG_HINT = USER_BOOKING_AGENT_HINT
 
 SEARCH_ONLY_HINT = "（仅查价）当前未开通采购预订；注册并配置密钥后可继续预订。"
 
+SEARCH_ONLY_HINT_EN = "(Search only) Booking is not enabled. Register at Flightroutes24 and configure keys to proceed."
+
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE = (
     f"今日演示查价次数已用完（每日 {DAILY_LIMIT} 次）。"
     f"若要继续查询，请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
     f"取得采购 APPKEY 后在本机完成密钥配置并重启 Claude Code，"
     f"之后将使用您的采购账号搜索（不受演示日限额）。"
     f"询问「如何配置 appkey」可查看配置步骤。"
+)
+
+USER_SKILL_QUOTA_EXCEEDED_MESSAGE_EN = (
+    f"Today's demo search quota ({DAILY_LIMIT} searches per day) has been used up. "
+    f"To continue searching, please register at {REGISTER_PORTAL_URL} and activate API procurement. "
+    f"After configuring your APPKEY locally and restarting Claude Code, your searches will use "
+    f"your procurement account (no daily demo limit applies). "
+    f"Ask 'how to configure appkey' for setup instructions."
 )
 
 

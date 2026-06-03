@@ -23,6 +23,25 @@ PASSENGER_INFO_USER_PROMPT = """生单需要每位乘客的证件信息及订单
 - 乘客：姓名（中文或姓/名）、性别（男/女）、出生日期、证件类型（默认护照）、证件号、证件有效期、国籍
 - 联系人：姓名、手机号（建议含区号 86）、邮箱"""
 
+PASSENGER_INFO_USER_PROMPT_EN = """To place a booking, I need passport details for each passenger and a contact person. Please provide the information in natural language (one or more passengers):
+
+**Adult example (1 passenger):**
+> Passenger: John Doe, Male, born 1990-01-15, Passport A12345678, expires 2030-12-31, nationality US.
+> Contact: John Doe, phone +1-555-0100, email john@example.com
+
+**With ticket name (when different from legal name):**
+> Passenger: John Doe, Male, 1990-01-15, Passport A12345678, expires 2030-12-31, nationality US (ticket name: DOE/JOHN).
+> Contact: John Doe, phone +1-555-0100, email john@example.com
+
+**Adult + child example:**
+> Adult: John Doe, Male, 1988-03-20, Passport B12345678, expires 2031-06-30, nationality US.
+> Child: Jane Doe, Female, 2018-06-01, Passport B87654321, expires 2031-06-30, nationality US, travelling with John Doe.
+> Contact: John Doe, +1-555-0100, john@example.com
+
+**Required fields (all mandatory):**
+- Passenger: full name, gender (Male/Female), date of birth, document type (default: passport), document number, expiry date, nationality
+- Contact: name, phone number (with country code), email"""
+
 PASSENGER_INFO_EXAMPLES: list[str] = [
     "乘客：张三，男，1990年1月15日出生，护照 E12345678，2030年12月31日到期，中国籍。"
     "联系人：张三，手机 13800138000，邮箱 zhangsan@example.com",
@@ -33,9 +52,22 @@ PASSENGER_INFO_EXAMPLES: list[str] = [
     "联系人：张三，13800138000，zhangsan@example.com",
 ]
 
+PASSENGER_INFO_EXAMPLES_EN: list[str] = [
+    "Passenger: John Doe, Male, 1990-01-15, Passport A12345678, expires 2030-12-31, nationality US. "
+    "Contact: John Doe, phone +1-555-0100, email john@example.com",
+    "Adult: John Doe, Male, 1988-03-20, Passport B12345678, expires 2031-06-30, nationality US. "
+    "Child: Jane Doe, Female, 2018-06-01, Passport B87654321, expires 2031-06-30, nationality US. "
+    "Contact: John Doe, +1-555-0100, john@example.com",
+]
+
 BOOKING_SELECTION_USER_PROMPT = (
     "当前有不止一条可订报价，请先告诉我您要订哪一条，再核对乘客信息：\n"
     "回复「直飞」或「中转」，或说明航班号（如 HO1832）。"
+)
+
+BOOKING_SELECTION_USER_PROMPT_EN = (
+    "Multiple fares are available. Please tell me which one you'd like to book before providing passenger details:\n"
+    'Reply "direct" or "connecting", or specify the flight number (e.g. HO1832).'
 )
 
 # 标准预订顺序（Agent 必须遵守）
@@ -48,7 +80,9 @@ BOOKING_WORKFLOW_STEPS = [
 ]
 
 PASSENGER_CONFIRM_PHRASE = "乘客信息确认无误"
+PASSENGER_CONFIRM_PHRASE_EN = "passenger info confirmed"
 ORDER_CONFIRM_PHRASE = "确认生单"
+ORDER_CONFIRM_PHRASE_EN = "confirm order"
 
 # export ResponseCode.VERIFY_INCONSISTENT_IDENTITIES
 VERIFY_INCONSISTENT_IDENTITIES_CODE = "304016"
@@ -58,6 +92,12 @@ VERIFY_IDENTITY_MISMATCH_USER_MESSAGE = (
     "校验失败：当前报价与采购身份不一致。\n"
     "若您刚刚在本机配置了新的采购 APPKEY，需要先用新身份重新搜索航班，"
     "确认新的直飞/中转报价后，再核对乘客信息并重新校验。"
+)
+
+VERIFY_IDENTITY_MISMATCH_USER_MESSAGE_EN = (
+    "Verification failed: the fare identity does not match your procurement account.\n"
+    "If you just configured a new APPKEY, please search for flights again with the new identity, "
+    "confirm the new direct/connecting fare, then re-enter passenger details and verify again."
 )
 
 VERIFY_IDENTITY_MISMATCH_AGENT_STEPS = [
@@ -97,9 +137,19 @@ PASSENGER_CONFIRM_USER_PROMPT = (
     f"若无误请回复「{PASSENGER_CONFIRM_PHRASE}」，将为您调用校验接口锁价。"
 )
 
+PASSENGER_CONFIRM_USER_PROMPT_EN = (
+    "Please review the passenger details above (name spelling, gender, document info).\n"
+    f'If everything is correct, reply "{PASSENGER_CONFIRM_PHRASE_EN}" to proceed with price verification.'
+)
+
 ORDER_CONFIRM_USER_PROMPT = (
     "请核对行程、退改规则与乘客/联系人信息。\n"
     f"若无误请回复「{ORDER_CONFIRM_PHRASE}」，将提交生单（创建真实订单）。"
+)
+
+ORDER_CONFIRM_USER_PROMPT_EN = (
+    "Please review the itinerary, refund/change policy, and passenger details.\n"
+    f'If everything is correct, reply "{ORDER_CONFIRM_PHRASE_EN}" to place the order (this creates a real booking).'
 )
 
 
@@ -182,9 +232,11 @@ def passenger_confirmation_required_payload(
         "passengerDisplay": passenger_display,
         "contactDisplay": contact_display,
         "confirmPhrase": PASSENGER_CONFIRM_PHRASE,
+        "confirmPhraseEn": PASSENGER_CONFIRM_PHRASE_EN,
         "passengerConfirmPrompt": PASSENGER_CONFIRM_USER_PROMPT,
+        "passengerConfirmPromptEn": PASSENGER_CONFIRM_USER_PROMPT_EN,
         "nextSteps": [
-            f"等待用户回复「{PASSENGER_CONFIRM_PHRASE}」",
+            f"等待用户回复「{PASSENGER_CONFIRM_PHRASE}」或 \"{PASSENGER_CONFIRM_PHRASE_EN}\"",
             "再执行 skill_booking_client.py verify --passenger-confirmed --passengers-file ...",
         ],
     }
@@ -226,10 +278,12 @@ def order_confirmation_required_payload(
         "totalPrice": total_price,
         "currency": currency,
         "confirmPhrase": ORDER_CONFIRM_PHRASE,
+        "confirmPhraseEn": ORDER_CONFIRM_PHRASE_EN,
         "orderConfirmPrompt": ORDER_CONFIRM_USER_PROMPT,
+        "orderConfirmPromptEn": ORDER_CONFIRM_USER_PROMPT_EN,
         "message": ORDER_CONFIRM_USER_PROMPT,
         "nextSteps": [
-            f"等待用户回复「{ORDER_CONFIRM_PHRASE}」",
+            f"等待用户回复「{ORDER_CONFIRM_PHRASE}」或 \"{ORDER_CONFIRM_PHRASE_EN}\"",
             "再执行 skill_booking_client.py order --user-confirmed ...",
         ],
     }

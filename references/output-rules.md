@@ -1,7 +1,37 @@
-# 输出规则（对用户展示与下载）
+# 输出规则（对用户展示与下载）/ Output Rules
 
 脚本 stdout 含 **`userView`**（给用户）与 **`agentOnly`**（仅 Agent 内部续跑）。  
 **对用户聊天、表格、附件、导出文件时，只使用 `userView` 与顶层 `message`，禁止引用 `agentOnly` 或整段原始 stdout。**
+
+## 语言 / Language
+
+- 全程跟随用户语言回复（中文或英文）。
+- When responding in English: use "direct flight" / "connecting flight" (not 直飞/中转), "Quote ID" (not 报价ID), "refund" / "change fee" for refundText/changeText.
+- Confirm phrases in English: **"passenger info confirmed"** and **"confirm order"** are equivalent to the Chinese phrases.
+- Script output `userView.message` may contain Chinese labels. **Do not copy them verbatim** when responding in English — rephrase them in English using the structured fields.
+- `passengerConfirmPromptEn` / `confirmPhraseEn` / `orderConfirmPromptEn` are the English equivalents in `userView`. Use these when the user is English-speaking.
+
+### 字段翻译参考 / Field label translation (for English responses)
+
+| Script label | English |
+|---|---|
+| 直飞最低 / Direct (lowest) | Lowest direct fare |
+| 中转最低 / Connecting (lowest) | Lowest connecting fare |
+| 退票/Refund | Refund policy |
+| 改期/Change | Change fee |
+| 姓名/Name | Name |
+| 性别/Gender | Gender |
+| 出生日期/DOB | Date of birth |
+| 证件类型/DocType | Document type |
+| 证件号/DocNo | Document number |
+| 证件有效期/Expiry | Expiry date |
+| 国籍/Nationality | Nationality |
+| 乘客类型/PaxType | Passenger type |
+| 联系人/Contact | Contact name |
+| 手机/Phone | Phone |
+| 邮箱/Email | Email |
+| 单程 (One-way) | One-way |
+| 往返 (Round-trip) | Round-trip |
 
 ## 查价 parse 后（未搜索）
 
@@ -43,7 +73,7 @@
 | 预订内部 ID | `verifyOfferId`、`offerId`（用 `quoteId` 报价ID 代替，用户可看到） |
 | 内部测试与维护材料 | 测试报告、维护文档全文、非生产网关说明 |
 | 环境变量名 | 勿向用户列出采购/网关相关的系统变量名 |
-| 示例姓名 | 对用户说明时使用 **张三**（儿童示例可用 **张小三**） |
+| 示例姓名 | 中文语境用 **张三**（儿童：**张小三**）；英文语境用 **John Doe**（child: **Jane Doe**） |
 
 ## Agent 内部（可读 `agentOnly`）
 

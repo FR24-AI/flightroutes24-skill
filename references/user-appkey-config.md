@@ -1,8 +1,10 @@
-# 采购 APPKEY 配置（对用户说明用）
+# 采购 APPKEY 配置（对用户说明用）/ Procurement APPKEY Setup
 
 用户询问「如何配置 appkey / 采购密钥 / 开通预订」时，**只按本文回答**。  
+When a user asks "how to configure appkey / procurement keys / enable booking", **answer only based on this document**.  
 **禁止**向用户说明内部联调、跳过校验/白名单等非公开配置方式。  
-**禁止**在对话中让用户粘贴密钥明文；引导用户在本机自行配置。
+**禁止**在对话中让用户粘贴密钥明文；引导用户在本机自行配置。  
+**Never** tell users about internal bypass options; **never** ask users to paste key values in chat.
 
 ## 前提
 
@@ -87,3 +89,66 @@ python -c "import config; print('configured:', config.is_newapi_configured()); p
 
 ## Agent 禁止事项
 
+---
+
+## English Summary
+
+**Prerequisites:** Register at [Flightroutes24](https://www.flightroutes24.com/) and activate API procurement to obtain three keys:
+- **APPKEY** (procurement identifier)
+- **SHA512 signing secret**
+- **AES secret** (16 bytes, for passenger data encryption)
+
+Demo fare search requires no keys. Only **procurement search + booking** need them.
+
+### Method 1: CLI (recommended — no restart needed)
+
+Run in the Skill directory (replace values with your real keys, **do not send them in chat**):
+
+```bash
+python scripts/config_keys.py set --appkey "YOUR_APPKEY" --sign-secret "YOUR_SIGN_SECRET" --aes-secret "YOUR_AES_SECRET"
+```
+
+Takes effect immediately on the next search — no restart required.
+
+### Method 2: `.env` file (no restart needed)
+
+Create a `.env` file in the Skill root directory (same level as `config.py`):
+
+```
+FR_NEWAPI_APPKEY=YOUR_APPKEY
+FR_NEWAPI_SIGN_SECRET=YOUR_SIGN_SECRET
+FR_NEWAPI_AES_SECRET=YOUR_AES_SECRET
+```
+
+The `.env` file is git-ignored and will not be committed.
+
+### Method 3: Windows User Environment Variables (requires restart)
+
+1. `Win + R` → type `sysdm.cpl` → Enter
+2. **Advanced** → **Environment Variables**
+3. Under **User variables**, create three new entries:
+
+| Variable | Description |
+|----------|-------------|
+| `FR_NEWAPI_APPKEY` | Procurement APPKEY |
+| `FR_NEWAPI_SIGN_SECRET` | SHA512 signing secret |
+| `FR_NEWAPI_AES_SECRET` | 16-byte AES secret |
+
+4. Click **OK** to save, then **fully exit and reopen Claude Code**.
+
+### Verify
+
+Open a terminal in the Skill directory and run:
+
+```bash
+python scripts/config_keys.py status
+```
+
+| Output | Meaning |
+|--------|---------|
+| `configured: True` | APPKEY and signing secret detected |
+| `booking_ready: True` | All three keys present — booking enabled |
+
+If `False`, check that the variable names are spelled correctly and that Claude Code has been restarted.
+
+**Configuration priority:** Environment variables > `.env` file > `.cache/keys.json`
