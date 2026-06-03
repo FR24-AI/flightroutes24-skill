@@ -22,7 +22,9 @@ from config import (  # noqa: E402
 from booking_guidance import (  # noqa: E402
     BOOKING_SELECTION_USER_PROMPT,
     BOOKING_WORKFLOW_STEPS,
+    ORDER_CONFIRM_PHRASE_EN,
     ORDER_CONFIRM_USER_PROMPT,
+    ORDER_CONFIRM_USER_PROMPT_EN,
     PASSENGER_INFO_EXAMPLES,
     PASSENGER_INFO_USER_PROMPT,
     build_booking_choices,
@@ -221,10 +223,12 @@ def format_verify_data(
 
     lines: list[str] = []
     if success:
-        lines.append(f"校验成功：总价约 {offer.get('totalPrice')} {offer.get('currency', '')}。")
+        lines.append(
+            f"校验成功 / Verified: 总价约 / total ≈ {offer.get('totalPrice')} {offer.get('currency', '')}。"
+        )
         lines.append(ORDER_CONFIRM_USER_PROMPT)
     else:
-        lines.append(f"校验失败：{raw.get('message') or code}")
+        lines.append(f"校验失败 / Verification failed：{raw.get('message') or code}")
 
     out: dict[str, Any] = {
         "success": success,
@@ -236,6 +240,8 @@ def format_verify_data(
         "currency": offer.get("currency"),
         "workflowStep": 4 if success else 3,
         "orderConfirmPrompt": ORDER_CONFIRM_USER_PROMPT if success else None,
+        "orderConfirmPromptEn": ORDER_CONFIRM_USER_PROMPT_EN if success else None,
+        "confirmPhraseEn": ORDER_CONFIRM_PHRASE_EN if success else None,
         "message": "\n".join(lines),
     }
     if success and passengers and agent_contact:
@@ -285,11 +291,12 @@ def format_order_data(raw: dict) -> dict[str, Any]:
     lines: list[str] = []
     if success:
         lines.append(
-            f"生单成功：订单号 {body.get('orderNo')}，状态 {body.get('orderStatus')}，"
-            f"总价 {body.get('totalPrice')} {body.get('currency', '')}。"
+            f"生单成功 / Order placed: 订单号 / order no. {body.get('orderNo')}，"
+            f"状态 / status {body.get('orderStatus')}，"
+            f"总价 / total {body.get('totalPrice')} {body.get('currency', '')}。"
         )
     else:
-        lines.append(f"生单失败：{raw.get('message') or code}")
+        lines.append(f"生单失败 / Order failed：{raw.get('message') or code}")
 
     return {
         "success": success,
