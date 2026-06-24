@@ -166,11 +166,14 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         offer = user_view.get(key)
         if not offer:
             continue
+        quote_id = offer.get("quoteId")
         lines.append(
             f"【{title_zh} / {title_en}】{offer.get('route', '')} {offer.get('flights', '')} "
             f"{offer.get('totalPrice')} {offer.get('currency', '')}/pax"
         )
         lines.extend(_refund_baggage_lines(offer))
+        if quote_id:
+            lines.append(f"报价ID / Quote ID: {quote_id}")
 
     if user_view.get("selectionRequired"):
         lines.append('请告知要订「直飞」或「中转」/ Reply "direct" or "connecting".')
