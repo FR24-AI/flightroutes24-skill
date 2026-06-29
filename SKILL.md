@@ -1,4 +1,4 @@
----
+﻿---
 name: fr24-ai
 description: "Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping；配置采购密钥后支持搜索、校验、生单。触发词：查航班、搜机票、预订、生单、飞。Keywords: flight search, search flights, book flight, book ticket, air ticket, check fare, flight price, buy ticket, international flight, one-way, round trip."
 homepage: https://www.flightroutes24.com/
@@ -37,11 +37,11 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 | 模式 | 条件 | 接口 |
 |------|------|------|
-| 演示查价 | 未配置采购密钥 | `POST /ai/shopping`，请求头 `X-Skill-Client-Key` |
-| 采购查价 | 已配置 APPKEY 与签名密钥 | 同上，请求头 `appkey`，请求体 `authentication` |
+| 演示查价 | 未配置采购密钥 | `POST /ai/shopping`（v1），请求头 `X-Skill-Client-Key` |
+| 采购查价 | 已配置 APPKEY 与签名密钥 | `POST /ai/shopping/v2`，请求头 `appkey`，请求体 `authentication` |
 | 预订 | 已配置 APPKEY、签名密钥、AES 密钥 | `POST /api/new/pricing`、`POST /api/new/booking` |
 
-预订依赖见 `requirements.txt`。网关地址在 `config.py` 中固定配置；采购密钥仅通过本机用户环境变量配置，**勿在对话中向用户宣读环境变量名或密钥内容**。
+预订依赖见 `requirements.txt`。网关地址在 `config.py` 中固定配置。
 
 ---
 
@@ -69,10 +69,12 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 ## 查价流程
 
+> **前提**：搜索接口（v2）需要采购密钥。若返回 `307904`（请提供采购认证信息），说明尚未配置采购密钥，请先按「采购密钥」章节完成配置，再重试搜索。
+
 1. **解析**：`{baseDir}/scripts/nl_to_search.py parse --text "..."`（不消耗演示日配额）  
    → 用 `userView` 确认行程、日期、人数、舱位。
 2. **搜索**：用户确认后
-   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer`
+   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer --v2`
    → 用 `userView.directLowest`、`transferLowest` 展示直飞/中转最低价（含退改、行李摘要、**报价ID** `quoteId`）。
    → 每条报价**必须展示 `quoteId`（报价ID）**，以便用户后续确认和排查。
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
@@ -106,7 +108,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 | 5 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` |
 
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
-- 禁止：未确认乘客即校验；未确认即生单；在对话中代填或展示密钥明文。
+- 禁止：未确认乘客即校验；未确认即生单。
 
 ---
 
@@ -117,7 +119,6 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 - 引导用户在 [航路官网](https://www.flightroutes24.com/) 开通 API 采购；
 - 在本机用户环境变量中配置 APPKEY、签名密钥、AES 密钥；
 - 配置后重启 Agent 客户端；
-- **禁止**让用户在对话中发送密钥明文；
 - **禁止**向用户说明内部联调、跳过校验等维护配置。
 
 For English users: guide them to register at [Flightroutes24](https://www.flightroutes24.com/), activate API procurement, and configure keys locally per [user-appkey-config.md](./references/user-appkey-config.md).
@@ -130,7 +131,7 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 |------|------|
 | `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程 |
 | `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件 |
-| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索 |
+| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --v2` | 搜索（v2，直飞按航班号去重） |
 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
 | `{baseDir}/scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 |
 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` | 生单 |
