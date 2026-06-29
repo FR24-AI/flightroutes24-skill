@@ -33,7 +33,7 @@ from booking_guidance import (  # noqa: E402
     selection_required,
     verify_identity_mismatch_payload,
 )
-from fare_summarizer import summarize_response, _summarize_from_data  # noqa: E402
+from fare_summarizer import summarize_response, _summarize_from_data_v2  # noqa: E402
 from search_refinement import describe_preferences, extract_search_filters  # noqa: E402
 from output_export import (  # noqa: E402
     order_agent_only,
@@ -70,27 +70,30 @@ def _offer_block(label: str, offer: dict | None) -> dict[str, Any] | None:
     }
 
 
-def _normalize_newapi_raw(raw: dict, *, filters: dict[str, Any] | None = None) -> dict:
-    if raw.get("summary") and not filters:
+def _normalize_newapi_raw_v2(raw: dict, *, filters: dict[str, Any] | None = None) -> dict:
+    """v2：用 directOptions 汇总，服务端已返回 directOptions 时直接使用。"""
+    server_summary = raw.get("summary") or {}
+    if server_summary.get("directOptions") and not filters:
         return raw
     data = raw.get("data")
     if isinstance(data, dict):
-        return {**raw, "summary": _summarize_from_data(data, filters=filters)}
+        return {**raw, "summary": _summarize_from_data_v2(data, filters=filters)}
     return raw
 
 
-def format_search_data(
+def format_search_data_v2(
     raw: dict,
     search_mode: str,
     *,
     search_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """v2 版本：直飞展示按航班号去重的列表（directOptions），中转仍取一条最低价。"""
     skill_like = search_mode in ("skill", "skill-auth", "newapi")
     prefs = (search_payload or {}).get("preferences") or {}
     filters = extract_search_filters(prefs)
     filter_note = describe_preferences(prefs)
     if search_mode == "newapi":
-        raw = _normalize_newapi_raw(raw, filters=filters or None)
+        raw = _normalize_newapi_raw_v2(raw, filters=filters or None)
 
     code = str(raw.get("code", ""))
     if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
@@ -105,17 +108,13 @@ def format_search_data(
         if skill_like
         else (raw.get("summary") or {})
     )
-    if search_mode == "newapi" and not summary.get("directLowest"):
-        summary = {
-            **_summarize_from_data(raw.get("data") or {}, filters=filters or None),
-            **summary,
-        }
 
-    direct = _offer_block("直飞最低", summary.get("directLowest"))
+    direct_options: list[dict[str, Any]] = summary.get("directOptions") or []
     transfer = _offer_block("中转最低", summary.get("transferLowest"))
+    direct_lowest = _offer_block("直飞最低", summary.get("directLowest"))
     booking_enabled = is_newapi_configured()
     booking_ready = is_booking_ready()
-    choices = build_booking_choices(direct, transfer) if success and booking_enabled else []
+    choices = build_booking_choices(direct_lowest, transfer) if success and booking_enabled else []
 
     lines: list[str] = []
     if success:
@@ -123,26 +122,29 @@ def format_search_data(
         lines.append(f"（{mode_label}）")
         if filter_note:
             lines.append(f"筛选条件：{filter_note}")
-        if filter_note and not direct and not transfer:
-            matched = summary.get("matchedOfferCount", 0)
+        if filter_note and not direct_options and not transfer:
             lines.append(
                 f"未找到符合上述条件的报价（共检索 {summary.get('totalOffers', 0)} 条）。"
                 f"请放宽航司或起飞时段后说「重新搜索」或补充条件。"
             )
-        if direct:
-            lines.append(
-                f"【直飞最低】{direct['route']} {direct['flights']} "
-                f"{direct['totalPrice']} {direct['currency']}/人"
-            )
+        if direct_options:
+            lines.append(f"【直飞报价 共{len(direct_options)}条】")
+            for i, opt in enumerate(direct_options, start=1):
+                lines.append(
+                    f"  {i}. {opt.get('flights', '')} "
+                    f"{opt.get('segments', [{}])[0].get('depTime', '')[:5] if opt.get('segments') else ''}"
+                    f" 约 {opt.get('totalPrice')} {opt.get('currency', 'CNY')}/人"
+                    f"  报价ID: {opt.get('offerId', '')}"
+                )
         if transfer:
             lines.append(
                 f"【中转最低】{transfer['route']} {transfer['flights']} "
-                f"{transfer['totalPrice']} {transfer['currency']}/人"
+                f"约 {transfer['totalPrice']} {transfer['currency']}/人"
             )
         if selection_required(choices):
             lines.append(BOOKING_SELECTION_USER_PROMPT)
         if booking_enabled and booking_ready:
-            lines.append("如需预订，请提供乘客与联系人信息；核对后将为您校验报价并生单。")
+            lines.append("如需预订，请告知选择哪条直飞（序号或报价ID）及乘客信息。")
         elif not booking_enabled:
             lines.append(SEARCH_ONLY_HINT)
             lines.append(USER_BOOKING_USER_MESSAGE)
@@ -160,7 +162,8 @@ def format_search_data(
         "searchMode": search_mode,
         "bookingEnabled": booking_enabled,
         "bookingReady": booking_ready,
-        "directLowest": direct,
+        "directOptions": direct_options,
+        "directLowest": direct_lowest,
         "transferLowest": transfer,
         "bookingChoices": choices,
         "selectionRequired": selection_required(choices),
@@ -174,13 +177,13 @@ def format_search_data(
     }
 
 
-def wrap_search(
+def wrap_search_v2(
     raw: dict,
     search_mode: str,
     *,
     search_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    internal = format_search_data(raw, search_mode, search_payload=search_payload)
+    internal = format_search_data_v2(raw, search_mode, search_payload=search_payload)
     user_view = search_user_view(internal)
     return wrap_envelope(
         action="search",

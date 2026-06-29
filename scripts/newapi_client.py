@@ -26,12 +26,11 @@ from config import (  # noqa: E402
     GRAY_HEADER,
     NEWAPI_AES_SECRET,
     NEWAPI_APP_KEY,
-    NEWAPI_SHOPPING_PATH,
     NEWAPI_SIGN_SECRET,
     NEWAPI_SKIP_AUTH,
     NEWAPI_SKIP_IP_WHITELIST,
     PRICING_PATH,
-    SHOPPING_PATH,
+    SHOPPING_V2_PATH,
     USER_BOOKING_USER_MESSAGE,
     booking_required_payload,
     is_newapi_configured,
@@ -96,8 +95,8 @@ def _http_post(url: str, body: dict, headers: dict[str, str], timeout: int = 120
         return {"code": "NETWORK_ERROR", "message": f"无法连接 {EXPORT_BASE_URL}：{e.reason}"}
 
 
-def skill_shopping(payload: dict) -> dict:
-    """统一走 /ai/shopping：未配置密钥为演示模式；已配置则带 appkey + authentication。"""
+def skill_shopping_v2(payload: dict) -> dict:
+    """走 /ai/shopping/v2：直飞按航班号去重后各取最低价（最多 N 条），中转取一条最低价。"""
     key = ensure_client_key()
     headers = {
         "Content-Type": "application/json; charset=utf-8",
@@ -117,13 +116,13 @@ def skill_shopping(payload: dict) -> dict:
         body = _attach_auth(body)
     if GRAY_HEADER:
         headers["gray"] = GRAY_HEADER
-    return _http_post(EXPORT_BASE_URL + SHOPPING_PATH, body, headers)
+    return _http_post(EXPORT_BASE_URL + SHOPPING_V2_PATH, body, headers)
 
 
-def run_search(payload: dict) -> tuple[dict, str]:
-    """搜索始终经 Skill 接口；searchMode 仅区分是否携带采购认证。"""
+def run_search_v2(payload: dict) -> tuple[dict, str]:
+    """v2 搜索：直飞按航班号去重，每航班号取最低价，最多 N 条。"""
     mode = "skill-auth" if is_newapi_configured() else "skill"
-    return skill_shopping(payload), mode
+    return skill_shopping_v2(payload), mode
 
 
 def _newapi_headers_base() -> dict[str, str]:

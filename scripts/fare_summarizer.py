@@ -282,18 +282,19 @@ def _offer_matches_filters(
     return True
 
 
-def _summarize_from_data(
+def _summarize_from_data_v2(
     data: dict[str, Any],
     *,
     filters: dict[str, Any] | None = None,
+    max_direct: int = 20,
 ) -> dict[str, Any]:
+    """v2 版本：直飞按航班号分组各取最低价，最多 max_direct 条；中转取一条最低价。"""
     offers = data.get("offers") or []
     leg_map = _build_leg_map(data.get("legs") or [])
     seg_map = _build_segment_map(data.get("segments") or [])
 
-    direct_best: dict[str, Any] | None = None
+    direct_by_flight: dict[str, tuple[float, dict[str, Any]]] = {}
     transfer_best: dict[str, Any] | None = None
-    direct_price: float | None = None
     transfer_price: float | None = None
     direct_count = 0
     transfer_count = 0
@@ -309,35 +310,35 @@ def _summarize_from_data(
             continue
         matched_count += 1
         is_direct = len(seg_ids) == 1
+        price = _offer_total(offer)
         if is_direct:
             direct_count += 1
+            if price is None:
+                continue
+            first_seg = seg_map.get(seg_ids[0]) or {}
+            flight_no_key = _format_flight_no(first_seg.get("carrier"), first_seg.get("flightNo"))
+            existing = direct_by_flight.get(flight_no_key)
+            if existing is None or price < existing[0]:
+                summary = _build_offer_summary(offer, seg_ids, seg_map, "direct", "直飞", price)
+                direct_by_flight[flight_no_key] = (price, summary)
         else:
             transfer_count += 1
-        price = _offer_total(offer)
-        if price is None:
-            continue
-        summary = _build_offer_summary(
-            offer,
-            seg_ids,
-            seg_map,
-            "direct" if is_direct else "transfer",
-            "直飞" if is_direct else "中转",
-            price,
-        )
-        if is_direct:
-            if direct_price is None or price < direct_price:
-                direct_price = price
-                direct_best = summary
-        else:
+            if price is None:
+                continue
             if transfer_price is None or price < transfer_price:
                 transfer_price = price
-                transfer_best = summary
+                transfer_best = _build_offer_summary(offer, seg_ids, seg_map, "transfer", "中转", price)
 
-    out = {
+    direct_options = [
+        s for _, s in sorted(direct_by_flight.values(), key=lambda x: x[0])
+    ][:max_direct]
+
+    out: dict[str, Any] = {
         "totalOffers": len(offers),
         "directCount": direct_count,
         "transferCount": transfer_count,
-        "directLowest": direct_best,
+        "directOptions": direct_options,
+        "directLowest": direct_options[0] if direct_options else None,
         "transferLowest": transfer_best,
     }
     if filters:
@@ -351,13 +352,15 @@ def summarize_response(
     *,
     filters: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """从 Skill 搜索响应生成展示用摘要。"""
+    """从 Skill 搜索响应生成展示用摘要（v2：直飞按航班号去重，最多 20 条）。"""
     meta = body.get("skillMeta") or {}
     server_summary = body.get("summary")
     if server_summary and not filters:
         core = dict(server_summary)
+        if "directOptions" not in core and body.get("data"):
+            core = _summarize_from_data_v2(body.get("data") or {}, filters=filters)
     else:
-        core = _summarize_from_data(body.get("data") or {}, filters=filters)
+        core = _summarize_from_data_v2(body.get("data") or {}, filters=filters)
 
     return {
         **core,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""调用 export /ai/shopping。"""
+"""调用 export /ai/shopping/v2。"""
 from __future__ import annotations
 
 import argparse
@@ -25,12 +25,11 @@ from config import (  # noqa: E402
     EXPORT_BASE_URL,
     GRAY_HEADER,
     PENDING_PAYLOAD_FILE,
-    SHOPPING_PATH,
     SKILL_ID,
 )
 
-from booking_format import wrap_search  # noqa: E402
-from newapi_client import run_search  # noqa: E402
+from booking_format import wrap_search_v2  # noqa: E402
+from newapi_client import run_search_v2  # noqa: E402
 
 BJ = ZoneInfo("Asia/Shanghai")
 
@@ -76,11 +75,12 @@ def _build_request_headers(client_key: str) -> dict[str, str]:
     return headers
 
 
-def search(payload: dict, *, selection: str = "direct") -> dict:
-    raw, mode = run_search(payload)
+def search_v2(payload: dict, *, selection: str = "direct") -> dict:
+    """v2 搜索：直飞按航班号去重，每航班号取最低价，最多 20 条。"""
+    raw, mode = run_search_v2(payload)
     code = str(raw.get("code", ""))
     success = code in ("0", "000000")
-    result = wrap_search(raw, mode, search_payload=payload)
+    result = wrap_search_v2(raw, mode, search_payload=payload)
     if not success:
         return result
 
@@ -100,6 +100,7 @@ def search(payload: dict, *, selection: str = "direct") -> dict:
                     "processingTime": agent.get("processingTime"),
                     "selection": pick,
                     "selectedOffer": selected,
+                    "directOptions": agent.get("directOptions"),
                     "directLowest": agent.get("directLowest"),
                     "transferLowest": agent.get("transferLowest"),
                 },
@@ -109,15 +110,6 @@ def search(payload: dict, *, selection: str = "direct") -> dict:
             encoding="utf-8",
         )
     return result
-
-
-def _http_error_hint(status_code: int) -> str | None:
-    if status_code == 404:
-        return (
-            f"HTTP 404：请确认 config.py 中 EXPORT_BASE_URL、GRAY_HEADER"
-            f"（当前 gray={GRAY_HEADER or '(空)'}）与路径 {SHOPPING_PATH}"
-        )
-    return None
 
 
 def main():
@@ -134,7 +126,6 @@ def main():
         choices=("direct", "transfer"),
         help="写入 booking_context 的选定报价（用户确认后）",
     )
-
     args = parser.parse_args()
     if args.cmd == "ensure-key":
         ensure_client_key()
@@ -145,7 +136,7 @@ def main():
         payload = json.loads(Path(args.payload_file).read_text(encoding="utf-8"))
         PENDING_PAYLOAD_FILE.parent.mkdir(parents=True, exist_ok=True)
         PENDING_PAYLOAD_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        out = search(payload, selection=args.selection)
+        out = search_v2(payload, selection=args.selection)
 
     print(json.dumps(out, ensure_ascii=False, indent=2))
     sys.exit(0 if out.get("status") == "success" else 1)
