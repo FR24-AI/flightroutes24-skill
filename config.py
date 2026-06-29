@@ -24,7 +24,7 @@ SKILL_DISPLAY_NAME = "Flightroutes24航路国际机票"
 SKILL_AUTHOR = "FR24"
 
 # --- export 网关（项目内固定；切换环境请直接改此处，勿使用 skill.local.env）---
-EXPORT_BASE_URL = "https://flight-test.flightroutes24.com"
+EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
 GRAY_HEADER = "ww"
 
 SHOPPING_V2_PATH = "/ai/shopping/v2"
