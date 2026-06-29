@@ -61,13 +61,13 @@ PASSENGER_INFO_EXAMPLES_EN: list[str] = [
 ]
 
 BOOKING_SELECTION_USER_PROMPT = (
-    "当前有不止一条可订报价，请先告诉我您要订哪一条，再核对乘客信息：\n"
-    "回复「直飞」或「中转」，或说明航班号（如 HO1832）。"
+    "如需预订，请告知选择的直飞序号（如「第3条」）或报价ID，或回复「中转」选择中转报价；"
+    "确认后请提供乘客与联系人信息。"
 )
 
 BOOKING_SELECTION_USER_PROMPT_EN = (
-    "Multiple fares are available. Please tell me which one you'd like to book before providing passenger details:\n"
-    'Reply "direct" or "connecting", or specify the flight number (e.g. HO1832).'
+    "To book, please tell me which direct flight you'd like (e.g. 'option 3' or the Quote ID), "
+    'or reply "connecting" for the connecting fare. Then provide passenger details.'
 )
 
 # 标准预订顺序（Agent 必须遵守）

@@ -193,8 +193,6 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         if quote_id:
             lines.append(f"报价ID / Quote ID: {quote_id}")
 
-    if user_view.get("selectionRequired"):
-        lines.append('请告知要订「直飞」或「中转」/ Reply "direct" or "connecting".')
     return "\n".join(lines) if lines else user_view.get("message") or ""
 
 

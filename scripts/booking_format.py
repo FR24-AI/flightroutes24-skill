@@ -146,10 +146,8 @@ def format_search_data_v2(
                 f"【中转最低】{transfer['route']} {transfer['flights']} "
                 f"约 {transfer['totalPrice']} {transfer['currency']}/人"
             )
-        if selection_required(choices):
-            lines.append(BOOKING_SELECTION_USER_PROMPT)
         if booking_enabled and booking_ready:
-            lines.append("如需预订，请告知选择哪条直飞（序号或报价ID）及乘客信息。")
+            lines.append(BOOKING_SELECTION_USER_PROMPT)
         elif not booking_enabled:
             lines.append(SEARCH_ONLY_HINT)
             lines.append(USER_BOOKING_USER_MESSAGE)
