@@ -1,6 +1,6 @@
 ﻿---
 name: fr24-ai
-description: "Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping；配置采购密钥后支持搜索、校验、生单。触发词：查航班、搜机票、预订、生单、飞。Keywords: flight search, search flights, book flight, book ticket, air ticket, check fare, flight price, buy ticket, international flight, one-way, round trip."
+description: "Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping/v2（需采购密钥）；配置采购密钥后支持搜索、校验、生单。触发词：查航班、搜机票、预订、生单、飞。Keywords: flight search, search flights, book flight, book ticket, air ticket, check fare, flight price, buy ticket, international flight, one-way, round trip."
 homepage: https://www.flightroutes24.com/
 metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "homepage": "https://www.flightroutes24.com/", "requires": {"anyBins": ["python3", "python"]}, "envVars": [{"name": "FR_NEWAPI_APPKEY", "required": false, "description": "采购 APPKEY（演示模式无需配置）"}, {"name": "FR_NEWAPI_SIGN_SECRET", "required": false, "description": "SHA512 签名密钥（采购模式）"}, {"name": "FR_NEWAPI_AES_SECRET", "required": false, "description": "16 字节 AES 密钥（预订功能）"}], "install": [{"id": "pip-deps", "kind": "uv", "args": ["pip", "install", "-r", "{baseDir}/requirements.txt"], "label": "Install Python deps (booking feature)"}]}}
 ---
@@ -37,8 +37,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 | 模式 | 条件 | 接口 |
 |------|------|------|
-| 演示查价 | 未配置采购密钥 | `POST /ai/shopping`（v1），请求头 `X-Skill-Client-Key` |
-| 采购查价 | 已配置 APPKEY 与签名密钥 | `POST /ai/shopping/v2`，请求头 `appkey`，请求体 `authentication` |
+| 查价 | 需配置 APPKEY 与签名密钥（未配置返回 `307904`） | `POST /ai/shopping/v2`，请求头 `appkey`，请求体 `authentication` |
 | 预订 | 已配置 APPKEY、签名密钥、AES 密钥 | `POST /api/new/pricing`、`POST /api/new/booking` |
 
 预订依赖见 `requirements.txt`。网关地址在 `config.py` 中固定配置。
@@ -74,7 +73,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 1. **解析**：`{baseDir}/scripts/nl_to_search.py parse --text "..."`（不消耗演示日配额）  
    → 用 `userView` 确认行程、日期、人数、舱位。
 2. **搜索**：用户确认后
-   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer --v2`
+   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer`
    → 用 `userView.directLowest`、`transferLowest` 展示直飞/中转最低价（含退改、行李摘要、**报价ID** `quoteId`）。
    → 每条报价**必须展示 `quoteId`（报价ID）**，以便用户后续确认和排查。
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
@@ -131,7 +130,7 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 |------|------|
 | `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程 |
 | `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件 |
-| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --v2` | 搜索（v2，直飞按航班号去重） |
+| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索（v2，直飞按航班号去重） |
 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
 | `{baseDir}/scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 |
 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` | 生单 |
@@ -144,7 +143,5 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 ## 业务限制 / Business Constraints
 
 - 支持单程、往返；不支持多段缺口程。/ Supports one-way and round-trip; multi-city itineraries are not supported.
-- 演示模式：每 `clientKey` 每日搜索次数有限（默认 10，以服务端配置为准）。/ Demo mode: limited searches per `clientKey` per day (default 10).
-- 演示配额用尽（`307901`）：引导用户开通采购并配置密钥（见 `user-appkey-config.md`），勿仅建议「明日再试」。/ When demo quota is exhausted (`307901`): guide user to activate procurement — do not just say "try again tomorrow".
-- 已配置采购密钥的搜索不扣演示日配额。/ Searches with a configured APPKEY do not consume the demo daily quota.
+- 搜索接口（v2）必须配置采购密钥；未配置时返回 `307904`，应引导用户按「采购密钥」章节完成配置。/ The v2 search API requires procurement keys; without them `307904` is returned — guide the user to configure keys.
 - 生单为真实订单，必须在用户明确确认后提交。/ Orders are real bookings and must only be submitted after explicit user confirmation.

@@ -118,7 +118,12 @@ def format_search_data_v2(
 
     lines: list[str] = []
     if success:
-        mode_label = "NewApi 采购搜索" if search_mode == "newapi" else "Skill 演示搜索"
+        if search_mode == "skill-auth":
+            mode_label = "采购搜索"
+        elif search_mode == "newapi":
+            mode_label = "NewApi 采购搜索"
+        else:
+            mode_label = "Skill 搜索"
         lines.append(f"（{mode_label}）")
         if filter_note:
             lines.append(f"筛选条件：{filter_note}")
@@ -149,7 +154,9 @@ def format_search_data_v2(
             lines.append(SEARCH_ONLY_HINT)
             lines.append(USER_BOOKING_USER_MESSAGE)
     else:
-        if code == "307901":
+        if code == "307904":
+            lines.append("搜索需要采购密钥，请先配置 FR_NEWAPI_APPKEY 与 FR_NEWAPI_SIGN_SECRET，再重试。详见「采购密钥」章节。")
+        elif code == "307901":
             lines.append(USER_SKILL_QUOTA_EXCEEDED_MESSAGE)
         else:
             lines.append(raw.get("message") or f"搜索失败：{code}")

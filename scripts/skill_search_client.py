@@ -6,8 +6,6 @@ import argparse
 import json
 import secrets
 import sys
-import urllib.error
-import urllib.request
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -22,7 +20,6 @@ from config import (  # noqa: E402
     CACHE_DIR,
     CLIENT_KEY_FILE,
     CLIENT_KEY_HEADER,
-    EXPORT_BASE_URL,
     GRAY_HEADER,
     PENDING_PAYLOAD_FILE,
     SKILL_ID,
@@ -63,16 +60,6 @@ def quota_status() -> dict:
         "data": {"clientKeyReady": True, "clientKeyPrefix": key[:8] + "..."},
         "message": "客户端密钥已就绪，搜索后将返回剩余次数",
     }
-
-
-def _build_request_headers(client_key: str) -> dict[str, str]:
-    headers = {
-        "Content-Type": "application/json; charset=utf-8",
-        CLIENT_KEY_HEADER: client_key,
-    }
-    if GRAY_HEADER:
-        headers["gray"] = GRAY_HEADER
-    return headers
 
 
 def search_v2(payload: dict, *, selection: str = "direct") -> dict:
