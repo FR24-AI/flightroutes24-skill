@@ -159,19 +159,37 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         else:
             lines.append(f"今日剩余搜索次数 / remaining searches today: {quota}")
 
-    for key, title_zh, title_en in (
-        ("directLowest", "直飞最低", "Direct (lowest)"),
-        ("transferLowest", "中转最低", "Connecting (lowest)"),
-    ):
-        offer = user_view.get(key)
-        if not offer:
-            continue
-        quote_id = offer.get("quoteId")
+    direct_options: list[dict[str, Any]] = user_view.get("directOptions") or []
+    if direct_options:
+        lines.append(f"【直飞报价 共{len(direct_options)}条 / Direct flights ({len(direct_options)})】")
+        for i, opt in enumerate(direct_options, start=1):
+            segs = opt.get("segments") or []
+            dep_time = segs[0].get("depTime", "")[:5] if segs else ""
+            lines.append(
+                f"  {i}. {opt.get('flights', '')} {dep_time}"
+                f" {opt.get('totalPrice')} {opt.get('currency', 'CNY')}/pax"
+                f"  报价ID/QuoteID: {opt.get('quoteId', '')}"
+            )
+    else:
+        offer = user_view.get("directLowest")
+        if offer:
+            quote_id = offer.get("quoteId")
+            lines.append(
+                f"【直飞最低 / Direct (lowest)】{offer.get('route', '')} {offer.get('flights', '')} "
+                f"{offer.get('totalPrice')} {offer.get('currency', '')}/pax"
+            )
+            lines.extend(_refund_baggage_lines(offer))
+            if quote_id:
+                lines.append(f"报价ID / Quote ID: {quote_id}")
+
+    transfer = user_view.get("transferLowest")
+    if transfer:
+        quote_id = transfer.get("quoteId")
         lines.append(
-            f"【{title_zh} / {title_en}】{offer.get('route', '')} {offer.get('flights', '')} "
-            f"{offer.get('totalPrice')} {offer.get('currency', '')}/pax"
+            f"【中转最低 / Connecting (lowest)】{transfer.get('route', '')} {transfer.get('flights', '')} "
+            f"{transfer.get('totalPrice')} {transfer.get('currency', '')}/pax"
         )
-        lines.extend(_refund_baggage_lines(offer))
+        lines.extend(_refund_baggage_lines(transfer))
         if quote_id:
             lines.append(f"报价ID / Quote ID: {quote_id}")
 
@@ -181,9 +199,10 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
 
 
 def search_user_view(internal: dict[str, Any]) -> dict[str, Any]:
-    demo = internal.get("searchMode") != "newapi"
+    demo = internal.get("searchMode") not in ("skill-auth", "newapi")
     user: dict[str, Any] = {
         "success": internal.get("success"),
+        "directOptions": [user_offer(o) for o in (internal.get("directOptions") or [])],
         "directLowest": user_offer(internal.get("directLowest")),
         "transferLowest": user_offer(internal.get("transferLowest")),
         "remainingQuota": internal.get("remainingQuota"),
@@ -202,6 +221,7 @@ def search_user_view(internal: dict[str, Any]) -> dict[str, Any]:
 
 def search_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
     agent = {k: internal[k] for k in _SEARCH_AGENT_KEYS if k in internal}
+    agent["directOptions"] = internal.get("directOptions") or []
     agent["directLowest"] = internal.get("directLowest")
     agent["transferLowest"] = internal.get("transferLowest")
     agent["selectionRequired"] = internal.get("selectionRequired")
