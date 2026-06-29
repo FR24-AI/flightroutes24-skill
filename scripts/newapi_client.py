@@ -138,13 +138,6 @@ def _newapi_headers_base() -> dict[str, str]:
     return headers
 
 
-def _newapi_headers() -> dict[str, str]:
-    headers = _newapi_headers_base()
-    if NEWAPI_SKIP_IP_WHITELIST:
-        headers[FR24_API_HEADER] = "1"
-    return headers
-
-
 def _newapi_channel_headers() -> dict[str, str]:
     """校验 / 生单等 NewApi 写操作请求头。"""
     headers = _newapi_headers_base()

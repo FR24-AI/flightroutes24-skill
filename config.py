@@ -127,13 +127,13 @@ FR24_API_HEADER = "fr24-api"
 REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"
 
 USER_BOOKING_USER_MESSAGE = (
-    f"当前为演示查价。若要预订，请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
+    f"搜索和预订均需配置采购密钥。请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
     f"由管理员在本机配置采购密钥后，再按预订流程提供乘客信息。"
 )
 
 USER_BOOKING_USER_MESSAGE_EN = (
-    f"Currently in demo search mode. To place a booking, please register at {REGISTER_PORTAL_URL} "
-    f"and activate API procurement, then configure your keys locally and restart Claude Code. "
+    f"Search and booking both require procurement keys. Please register at {REGISTER_PORTAL_URL} "
+    f"and activate API procurement, then configure your keys locally and restart the agent. "
     f"Ask 'how to configure appkey' for setup instructions."
 )
 
@@ -149,18 +149,15 @@ SEARCH_ONLY_HINT = "（仅查价）当前未开通采购预订；注册并配置
 SEARCH_ONLY_HINT_EN = "(Search only) Booking is not enabled. Register at Flightroutes24 and configure keys to proceed."
 
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE = (
-    f"今日演示查价次数已用完（每日 {DAILY_LIMIT} 次）。"
-    f"若要继续查询，请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
-    f"取得采购 APPKEY 后在本机完成密钥配置并重启 Claude Code，"
-    f"之后将使用您的采购账号搜索（不受演示日限额）。"
+    f"搜索失败，请确认采购密钥已正确配置。"
+    f"若尚未开通采购，请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
+    f"取得采购 APPKEY 后在本机完成密钥配置。"
     f"询问「如何配置 appkey」可查看配置步骤。"
 )
 
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE_EN = (
-    f"Today's demo search quota ({DAILY_LIMIT} searches per day) has been used up. "
-    f"To continue searching, please register at {REGISTER_PORTAL_URL} and activate API procurement. "
-    f"After configuring your APPKEY locally and restarting Claude Code, your searches will use "
-    f"your procurement account (no daily demo limit applies). "
+    f"Search failed. Please verify your procurement keys are correctly configured. "
+    f"If you haven't activated procurement yet, please register at {REGISTER_PORTAL_URL}. "
     f"Ask 'how to configure appkey' for setup instructions."
 )
 

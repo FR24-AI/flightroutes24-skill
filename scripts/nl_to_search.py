@@ -51,7 +51,7 @@ def main():
         summary = _format_summary(payload, trip, payload.get("preferences", {}).get("stops") == 0)
         action = "refine"
         user_message = (
-            f"已更新搜索条件：{note}。将为您重新搜索（消耗 1 次演示配额）。"
+            f"已更新搜索条件：{note}。将为您重新搜索。"
             if note
             else "已更新搜索条件，将为您重新搜索。"
         )
