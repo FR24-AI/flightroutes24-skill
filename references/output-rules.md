@@ -40,21 +40,44 @@
 
 ## 搜索 search 成功后
 
-- 用表格或分条列出 **直飞最低**、**中转最低**（有则展示）
-- 每条包含：航线、航班号、**人均成人价**（注明测试环境演示价）、**退票/改期摘要**、**行李摘要**、**报价ID**（`quoteId`，便于用户后续确认和排查）
-- 可展示 **今日剩余搜索次数**（`remainingQuota` / `dailyLimit`）
-- 多条可订时，请用户选择「直飞」或「中转」
+### 直飞报价（directOptions）
+
+- `userView.directOptions` 返回多少条，**必须完整展示全部条目，不得省略、截断或合并任何一条**
+- 每条**必须**包含以下所有字段：
+
+| 字段 | 来源 | 说明 |
+|------|------|------|
+| 序号 | 列表顺序 | 从 1 开始 |
+| 航班号 | `flights` | 完整航班号，不得缩写 |
+| 完整航线 | `route` 或 `segments` | 含出发/到达机场代码（如 HKG→DMK） |
+| 各航段起飞→到达时间 | `segments[].depTime` / `arrTime` | 每段都展示，跨日注明"次日" |
+| 人均成人价 | `totalPrice` + `currency` | 采购模式不加"演示价"标注 |
+| 退票/改期摘要 | `refundChange.refundText` / `changeText` | **必须逐条展示实际退改规则，不得用"以航司政策为准"等通用话术替代** |
+| 行李摘要 | `baggage`（每段） | 每段行李额都展示 |
+| 完整报价ID | `quoteId` | **不得截断，必须完整展示** |
+
+### 中转报价（transferLowest）
+
+- 展示最低价中转方案，字段要求同上
+- 各段航班号、机场、时间均须完整展示
+
+### 通用规则
+
+- 可展示 **今日剩余搜索次数**（`remainingQuota` / `dailyLimit`）（如有）
+- 多条可订时，请用户选择序号、航班号或「中转」
+- **禁止**：自行判断哪些字段"不重要"而省略；禁止截断 quoteId；禁止用通用话术替代具体退改规则
 
 ## 用户要改航司 / 起飞时间
 
 - 须 **refine → 再 search**（见 SKILL.md），不要只复述旧报价
 - 可展示 `searchFilters` / 筛选条件摘要；无匹配时说明「未找到符合条件」并建议放宽
 
-## 演示配额用尽（307901）
+## 搜索失败（307904 / 未配置采购密钥）
 
-- 使用 `userView.message` / 顶层 `message`（引导至 [航路官网](https://www.flightroutes24.com/) 开通 API 采购并本机配置 APPKEY，**不要**只提示「明日再试」）
-- 可展示 `registerPortalUrl` 链接
+- 使用 `userView.message` / 顶层 `message` 引导用户配置采购密钥
+- 可展示 `registerPortalUrl` 链接（[航路官网](https://www.flightroutes24.com/)）
 - 用户问具体配置步骤时，按 [user-appkey-config.md](./user-appkey-config.md) 回答
+- **不要**提示「明日再试」或「演示配额已用完」（v2 接口无演示配额）
 
 ## 预订
 
