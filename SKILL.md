@@ -74,8 +74,9 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
    → 用 `userView` 确认行程、日期、人数、舱位。
 2. **搜索**：用户确认后
    `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer`
-   → 按 **[output-rules.md](./references/output-rules.md)** 完整展示 `userView.directOptions`（全部直飞条目，不得省略）和 `transferLowest`。
+   → 按 **[output-rules.md](./references/output-rules.md)** 以**纯文本分行格式**（禁止 Markdown 表格/标题/粗体）完整展示 `userView.directOptions`（全部直飞条目，不得省略）和 `transferLowest`。
    → 每条必须包含：航班号、完整航线、各段起降时间、价格、**实际退改规则**（不得用通用话术）、行李、**完整报价ID `quoteId`**（不得截断）。
+   → 格式示例：`① SL9807  BKK→SIN  04:13→21:45  15.82 USD/人  行李：...  退票：...  报价ID：2159523647068979220`
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
 
 ---
