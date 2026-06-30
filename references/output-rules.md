@@ -45,28 +45,40 @@
 **禁止使用 Markdown 表格、`##` 标题、`**粗体**`、`` `代码块` ``。**  
 统一使用纯文本分行格式，示例如下：
 
+每条报价必须严格按照以下模板，**每个字段单独一行，任何情况下不得将多个字段合并到同一行**：
+
 ```
 ✈ [日期] [出发城市/机场] → [到达城市/机场] 直飞报价（共N条）
 
-① [航班号]  [出发机场]→[到达机场]  [起飞时间]→[到达时间（跨日注明"次日"）]
-   价格：[totalPrice] [currency]/人
-   行李：[baggage 每段]
-   退票：[refundChange.refundText]
-   改期：[refundChange.changeText]
-   报价ID：[quoteId 完整，不得截断]
+① [航班号]  [出发机场]→[到达机场]  [起飞时间]→[到达时间]
+价格：[totalPrice] [currency]/人
+行李：[baggage 每段]
+退票：[refundChange.refundText]
+改期：[refundChange.changeText]
+报价ID：[quoteId 完整，不得截断]
 
-② [航班号]  ...
-   ...
+② [航班号]  [出发机场]→[到达机场]  [起飞时间]→[到达时间]
+价格：[totalPrice] [currency]/人
+行李：[baggage 每段]
+退票：[refundChange.refundText]
+改期：[refundChange.changeText]
+报价ID：[quoteId 完整，不得截断]
 
-（以此类推，有多少条展示多少条）
+（以此类推，有多少条展示多少条，格式完全一致）
 
-🔵 中转最低：[各段航班号] [出发]→[经停]→[到达]  [各段时间]
-   价格：[totalPrice] [currency]/人
-   行李：[baggage 每段]
-   退票：[refundChange.refundText]
-   改期：[refundChange.changeText]
-   报价ID：[quoteId 完整]
+中转最低：
+[各段航班号]  [出发]→[经停]→[到达]  [各段时间]
+价格：[totalPrice] [currency]/人
+行李：[baggage 每段]
+退票：[refundChange.refundText]
+改期：[refundChange.changeText]
+报价ID：[quoteId 完整]
 ```
+
+**格式禁止事项：**
+- 禁止将价格、行李、退改、报价ID 拼接在航班号同一行
+- 禁止任何两条报价之间不空行
+- 禁止对部分条目用完整格式、其余条目用压缩格式——所有条目格式必须完全一致
 
 ### 展示顺序（严格遵守）
 
