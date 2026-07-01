@@ -95,6 +95,19 @@ def _http_post(url: str, body: dict, headers: dict[str, str], timeout: int = 120
         return {"code": "NETWORK_ERROR", "message": f"无法连接 {EXPORT_BASE_URL}：{e.reason}"}
 
 
+def _strip_client_only_prefs(payload: dict) -> dict:
+    """剔除仅客户端本地使用的 preferences 字段，避免后端 Jackson 解析报错。
+
+    preferredFlightNo 用于客户端摘要阶段精确匹配/置顶，后端 ApiSearchPreferences
+    不包含该字段，发送会导致 UnrecognizedPropertyException（HTTP 400）。
+    """
+    body = dict(payload)
+    prefs = body.get("preferences")
+    if isinstance(prefs, dict) and "preferredFlightNo" in prefs:
+        body["preferences"] = {k: v for k, v in prefs.items() if k != "preferredFlightNo"}
+    return body
+
+
 def skill_shopping_v2(payload: dict) -> dict:
     """走 /ai/shopping/v2：直飞按航班号去重后各取最低价（最多 N 条），中转取一条最低价。"""
     key = ensure_client_key()
@@ -102,7 +115,7 @@ def skill_shopping_v2(payload: dict) -> dict:
         "Content-Type": "application/json; charset=utf-8",
         CLIENT_KEY_HEADER: key,
     }
-    body: dict = dict(payload)
+    body: dict = _strip_client_only_prefs(payload)
     if is_newapi_configured():
         err = _require_newapi_secrets()
         if err:
