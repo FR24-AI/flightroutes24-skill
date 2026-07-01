@@ -247,6 +247,16 @@ def _window_bounds(window: dict[str, Any]) -> tuple[int | None, int | None]:
     return _to_min(window.get("from")), _to_min(window.get("to"))
 
 
+def _offer_flight_nos(seg_ids: list[str], seg_map: dict[str, dict[str, Any]]) -> set[str]:
+    out: set[str] = set()
+    for sid in seg_ids:
+        seg = seg_map.get(sid) or {}
+        fn = _format_flight_no(seg.get("carrier"), seg.get("flightNo"))
+        if fn:
+            out.add(fn.upper())
+    return out
+
+
 def _offer_matches_filters(
     offer: dict[str, Any],
     seg_ids: list[str],
@@ -264,6 +274,11 @@ def _offer_matches_filters(
         }
         plating = str(offer.get("platingCarrier") or "").upper()
         if not (want & seg_carriers) and plating not in want:
+            return False
+    flight_nos = filters.get("preferredFlightNo") or []
+    if flight_nos:
+        want_fn = {str(f).upper() for f in flight_nos}
+        if not (want_fn & _offer_flight_nos(seg_ids, seg_map)):
             return False
     window = filters.get("depTimeWindow")
     if window:

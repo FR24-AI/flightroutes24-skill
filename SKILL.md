@@ -85,15 +85,21 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 ## 条件调整与重新搜索
 
-用户对结果不满意并提出**航司**（如 CA/国航）或**起飞时段**（如中午 12 点左右）时：
+用户对结果不满意并提出**航司**（如 CA/国航）、**具体航班号**（如 WS221）或**起飞时段**（如中午 12 点左右）时：
 
 1. 不得仅在旧结果上口头筛选；须**重新搜索**（消耗演示配额；采购模式不受演示日限额约束）。
 2. `{baseDir}/scripts/nl_to_search.py refine --text "<用户要求>"`（不扣配额，更新 `{baseDir}/.cache/pending_search.json`）。
-3. 向用户确认更新后的 `userView`（含 `searchFilters` 或意图摘要中的航司、时段）。
+3. 向用户确认更新后的 `userView`（含 `searchFilters` 或意图摘要中的航司、航班号、时段）。
 4. 再次执行 `search`。
-5. 仍无匹配报价时，建议放宽航司或时段；勿擅自清除用户已指定的 `preferredCarrier`。
+5. 仍无匹配报价时，建议放宽航司/航班号/时段；勿擅自清除用户已指定的 `preferredCarrier` / `preferredFlightNo`。
 
-航司写入 `preferences.preferredCarrier` 并提交服务端；起飞时段在结果汇总时按首段起飞时间过滤展示。
+航司写入 `preferences.preferredCarrier` 并提交服务端；具体航班号写入 `preferences.preferredFlightNo`（仅客户端本地过滤，不随请求体发往服务端，用于在结果汇总阶段精确匹配展示）；起飞时段在结果汇总时按首段起飞时间过滤展示。
+
+### GDS 格式输入（如 `WS221V06JUL` / `WS 221 V 06JUL`）
+
+- 用户粘贴 GDS 航段行时，**原样**把该行文本传给 `parse` / `refine`（作为 `--text` 或 intent 的 `gdsText`/`passengerText`），不要自己先做语义转换或摘要改写。
+- 脚本会按位置结构化提取承运人、航班号、舱位单字母，精度优于自然语言解析，避免具体舱位代码（如 V/Q/K）被误归类为经济舱等粗粒度舱等。
+- 舱位/航班号解析结果体现在 `userView.intentSummary` 与 `searchFilters` 中，确认无误后再执行 `search`。
 
 ---
 

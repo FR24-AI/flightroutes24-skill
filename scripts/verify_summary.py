@@ -14,7 +14,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from config import CLIENT_KEY_HEADER, EXPORT_BASE_URL, GRAY_HEADER, SHOPPING_PATH  # noqa: E402
+from config import CLIENT_KEY_HEADER, EXPORT_BASE_URL, GRAY_HEADER, SHOPPING_V2_PATH  # noqa: E402
 
 
 def validate_summary(raw: dict) -> list[str]:
@@ -88,7 +88,7 @@ def main() -> int:
         headers["gray"] = GRAY_HEADER
 
     req = urllib.request.Request(
-        EXPORT_BASE_URL + SHOPPING_PATH,
+        EXPORT_BASE_URL + SHOPPING_V2_PATH,
         data=json.dumps(payload).encode("utf-8"),
         method="POST",
         headers=headers,

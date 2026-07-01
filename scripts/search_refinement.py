@@ -85,6 +85,21 @@ _TIME_POINT_RE = re.compile(
     r"(?:大约|约|大概)?\s*(\d{1,2})\s*[:：点时]\s*(\d{0,2})?\s*(?:分)?\s*(?:左右|前后|附近)?(?:起飞|出发|走)?"
 )
 _TIME_HALF_RE = re.compile(r"(\d{1,2})\s*点半")
+# 完整航班号（如 WS221），用于 refine 时识别用户指定的具体航班。
+_FLIGHT_NO_RE = re.compile(r"\b([A-Z]{2})\s*-?\s*(\d{1,4})\b", re.I)
+
+
+def parse_flight_nos_from_text(text: str) -> list[str]:
+    """从文本中识别完整航班号（承运人二字码+数字），用于按具体航班精确匹配/置顶。"""
+    found: list[str] = []
+    seen: set[str] = set()
+    for m in _FLIGHT_NO_RE.finditer(text):
+        carrier, number = m.groups()
+        flight_no = f"{carrier.upper()}{number}"
+        if flight_no not in seen:
+            seen.add(flight_no)
+            found.append(flight_no)
+    return found
 
 
 def parse_carriers_from_text(text: str) -> list[str]:
@@ -156,6 +171,9 @@ def extract_search_filters(preferences: dict[str, Any]) -> dict[str, Any]:
     carriers = preferences.get("preferredCarrier")
     if carriers:
         filters["preferredCarrier"] = [str(c).upper() for c in carriers]
+    flight_nos = preferences.get("preferredFlightNo")
+    if flight_nos:
+        filters["preferredFlightNo"] = [str(f).upper() for f in flight_nos]
     window = preferences.get("depTimeWindow")
     if isinstance(window, dict) and window.get("from") and window.get("to"):
         filters["depTimeWindow"] = {
@@ -170,6 +188,9 @@ def describe_preferences(prefs: dict[str, Any]) -> str:
     carriers = prefs.get("preferredCarrier") or []
     if carriers:
         parts.append("航司 " + "/".join(carriers))
+    flight_nos = prefs.get("preferredFlightNo") or []
+    if flight_nos:
+        parts.append("航班 " + "/".join(flight_nos))
     label = prefs.get("depTimeLabel")
     if label:
         parts.append(str(label))
@@ -191,6 +212,7 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
         return payload, "", "请说明要调整的条件，例如「要 CA 航司」或「中午 12 点左右起飞」"
 
     carriers = parse_carriers_from_text(t)
+    flight_nos = parse_flight_nos_from_text(t)
     window, time_label = parse_dep_time_window(t)
     t_lower = t.lower()
     direct_only = (
@@ -198,11 +220,11 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
         or ("nonstop" in t_lower or "non-stop" in t_lower or "direct only" in t_lower or "direct flight" in t_lower)
     )
 
-    if not carriers and not window and not direct_only:
+    if not carriers and not flight_nos and not window and not direct_only:
         return (
             payload,
             "",
-            "未能识别细化条件，请说明航司（如 CA/国航/Air China）或起飞时段（如 morning/afternoon/中午）",
+            "未能识别细化条件，请说明航司（如 CA/国航/Air China）、航班号（如 WS221）或起飞时段（如 morning/afternoon/中午）",
         )
 
     out = copy.deepcopy(payload)
@@ -212,6 +234,11 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
         existing = [str(c).upper() for c in (prefs.get("preferredCarrier") or [])]
         merged = list(dict.fromkeys(existing + carriers))
         prefs["preferredCarrier"] = merged
+
+    if flight_nos:
+        existing_fn = [str(f).upper() for f in (prefs.get("preferredFlightNo") or [])]
+        merged_fn = list(dict.fromkeys(existing_fn + flight_nos))
+        prefs["preferredFlightNo"] = merged_fn
 
     if window:
         prefs["depTimeWindow"] = window

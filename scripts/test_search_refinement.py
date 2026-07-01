@@ -30,11 +30,33 @@ def main() -> int:
     errors: list[str] = []
 
     sys.path.insert(0, str(_SCRIPTS))
-    from fare_summarizer import _summarize_from_data  # noqa: E402
+    from fare_summarizer import _summarize_from_data_v2  # noqa: E402
+    from query_parser import build_payload_from_intent, parse_gds_segments  # noqa: E402
     from search_refinement import apply_refinement, parse_carriers_from_text  # noqa: E402
 
     if parse_carriers_from_text("要CA") != ["CA"]:
         errors.append("parse_carriers_from_text CA")
+
+    gds_segs = parse_gds_segments("WS221V06JUL YVRYYZ HK1")
+    if gds_segs != [{"carrier": "WS", "flightNo": "WS221", "cabin": "V"}]:
+        errors.append(f"parse_gds_segments unexpected: {gds_segs}")
+
+    gds_payload, _summary, gds_err = build_payload_from_intent(
+        {
+            "tripType": "OW",
+            "legs": [{"originText": "温哥华", "destinationText": "多伦多", "depDateText": "2026-07-06"}],
+            "passengers": {"adult": 1},
+            "gdsText": "WS221V06JUL YVRYYZ HK1",
+        }
+    )
+    if gds_err:
+        errors.append(f"gds intent build failed: {gds_err}")
+    else:
+        gds_prefs = gds_payload.get("preferences") or {}
+        if gds_prefs.get("cabin") != "V":
+            errors.append(f"gds cabin not preserved: {gds_prefs.get('cabin')}")
+        if gds_prefs.get("preferredFlightNo") != ["WS221"]:
+            errors.append(f"gds flightNo not captured: {gds_prefs.get('preferredFlightNo')}")
 
     base = {
         "searchLegs": [{"origin": "SZX", "destination": "BKK", "depDate": "2026-06-01"}],
@@ -95,7 +117,7 @@ def main() -> int:
             },
         ],
     }
-    flt = _summarize_from_data(
+    flt = _summarize_from_data_v2(
         data,
         filters={"preferredCarrier": ["CA"], "depTimeWindow": {"from": "11:00", "to": "13:00"}},
     )
@@ -128,7 +150,7 @@ def main() -> int:
     if "CA" not in (prefs.get("preferredCarrier") or []):
         errors.append("refine payload missing CA")
 
-    from booking_format import format_search_data  # noqa: E402
+    from booking_format import format_search_data_v2  # noqa: E402
 
     mock_raw = {
         "code": "000000",
@@ -136,11 +158,11 @@ def main() -> int:
         "skillMeta": {"remainingQuota": 5, "dailyLimit": 10},
     }
     payload = json.loads((_ROOT / ".cache" / "pending_search.json").read_text(encoding="utf-8"))
-    internal = format_search_data(mock_raw, "skill", search_payload=payload)
-    if internal.get("success") and not internal.get("directLowest"):
-        errors.append("format_search_data missing direct with filters")
+    internal = format_search_data_v2(mock_raw, "skill", search_payload=payload)
+    if internal.get("success") and not internal.get("directOptions"):
+        errors.append("format_search_data_v2 missing direct with filters")
     if "筛选条件" not in (internal.get("message") or ""):
-        errors.append("format_search_data message missing filter line")
+        errors.append("format_search_data_v2 message missing filter line")
 
     out = {"ok": len(errors) == 0, "errors": errors}
     print(json.dumps(out, ensure_ascii=False, indent=2))

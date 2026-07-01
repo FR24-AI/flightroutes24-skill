@@ -248,6 +248,8 @@ def parse_user_view(intent_summary: str, payload: dict[str, Any]) -> dict[str, A
     filters: dict[str, Any] = {}
     if prefs.get("preferredCarrier"):
         filters["preferredCarrier"] = prefs["preferredCarrier"]
+    if prefs.get("preferredFlightNo"):
+        filters["preferredFlightNo"] = prefs["preferredFlightNo"]
     if prefs.get("depTimeLabel"):
         filters["depTimeLabel"] = prefs["depTimeLabel"]
     elif prefs.get("depTimeWindow"):

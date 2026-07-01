@@ -31,6 +31,41 @@ CABIN_MAP = {
     "p": "P",
 }
 
+# GDS 航段行：承运人(2) + 航班号(1-4位) + 舱位(单字母) + 日期(DDMon)，如 "WS221V06JUL" / "WS 221 V 06JUL"。
+# 参考 fr_f_b2b GeneralPnrParser 的按位置结构化提取思路：直接取字符，不做语义映射，避免具体舱位代码（如 V/Q/K）被误归类。
+_GDS_SEGMENT_RE = re.compile(r"\b([A-Z]{2})\s*(\d{1,4})\s*([A-Z])\s*(\d{1,2}[A-Z]{3})\b")
+
+# 单字母舱位代码（含「V」「V舱」「V class」等写法），命中则直接使用该字母，不查语义词典。
+_CABIN_CODE_RE = re.compile(r"^([A-Za-z])\s*(?:舱|class|cabin)?$", re.I)
+
+
+def parse_gds_segments(text: str) -> list[dict[str, str]]:
+    """从 GDS 格式航段行提取 承运人/航班号/舱位（结构化位置提取，不做语义映射）。
+
+    支持一段文本内多个航段（如多段中转的 GDS 行），按出现顺序去重返回。
+    """
+    if not text:
+        return []
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for m in _GDS_SEGMENT_RE.finditer(text.upper()):
+        carrier, flight_no, cabin, _date = m.groups()
+        flight_key = f"{carrier}{flight_no}"
+        if flight_key in seen:
+            continue
+        seen.add(flight_key)
+        out.append({"carrier": carrier, "flightNo": flight_key, "cabin": cabin})
+    return out
+
+
+def _extract_explicit_cabin(cabin_raw: str) -> str | None:
+    """识别单字母舱位代码（如 V、V舱、V class），命中直接返回原始字母，不经过 CABIN_MAP 语义映射。"""
+    raw = (cabin_raw or "").strip()
+    if not raw:
+        return None
+    m = _CABIN_CODE_RE.match(raw)
+    return m.group(1).upper() if m else None
+
 
 def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str | None, str | None]:
     """从 Agent 提供的 intent 构建请求体。返回 (payload, summary, error)。"""
@@ -87,9 +122,18 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
         return None, None, perr
 
     prefs = intent.get("preferences") or {}
+
+    # GDS 航段行（如 "WS221V06JUL"）：结构化提取舱位与航班号，优先级最高，不经过语义映射。
+    gds_text = str(intent.get("gdsText") or intent.get("passengerText") or "").strip()
+    gds_segments = parse_gds_segments(gds_text) if gds_text else []
+    gds_cabin = gds_segments[0]["cabin"] if gds_segments else None
+
     cabin_raw = str(prefs.get("cabin") or intent.get("cabinText") or "Y").strip()
-    if len(cabin_raw) == 1:
-        cabin = cabin_raw.upper()
+    explicit_cabin = _extract_explicit_cabin(cabin_raw)
+    if gds_cabin:
+        cabin = gds_cabin
+    elif explicit_cabin:
+        cabin = explicit_cabin
     else:
         cabin = CABIN_MAP.get(cabin_raw.lower(), "Y")
 
@@ -118,6 +162,11 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
         payload["preferences"]["depTimeWindow"] = prefs["depTimeWindow"]
     if prefs.get("depTimeLabel"):
         payload["preferences"]["depTimeLabel"] = prefs["depTimeLabel"]
+
+    # 指定航班号（客户端本地过滤字段，不随请求体发往后端，仅用于摘要阶段精确匹配/置顶）。
+    preferred_flight_no = prefs.get("preferredFlightNo") or [s["flightNo"] for s in gds_segments]
+    if preferred_flight_no:
+        payload["preferences"]["preferredFlightNo"] = list(dict.fromkeys(preferred_flight_no))
 
     summary = _format_summary(payload, trip, intent.get("directOnly"))
     return payload, summary, None

@@ -17,7 +17,7 @@ for p in (_ROOT, _SCRIPTS):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from config import CLIENT_KEY_HEADER, EXPORT_BASE_URL, GRAY_HEADER, SHOPPING_PATH  # noqa: E402
+from config import CLIENT_KEY_HEADER, EXPORT_BASE_URL, GRAY_HEADER, SHOPPING_V2_PATH  # noqa: E402
 from query_parser import build_payload_from_intent, parse_simple_text  # noqa: E402
 
 CACHE = _ROOT / ".cache" / "nl_test"
@@ -96,7 +96,7 @@ def run_search(payload: dict, client_key: str) -> dict:
     if GRAY_HEADER:
         headers["gray"] = GRAY_HEADER
     req = urllib.request.Request(
-        EXPORT_BASE_URL + SHOPPING_PATH,
+        EXPORT_BASE_URL + SHOPPING_V2_PATH,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         method="POST",
         headers=headers,
