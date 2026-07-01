@@ -72,6 +72,8 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 > **强制要求**：每次用户发起查价（含重新搜索、修改条件后搜索），**必须重新执行搜索脚本**，不得直接展示对话历史中的旧搜索结果。旧报价数据（价格、报价ID）可能已失效，沿用会导致校验失败。严禁在未执行搜索脚本的情况下向用户展示任何报价信息。
 
+> **绝对禁止**：无论何种输入格式，**严禁自行手动构造 payload JSON 写入 `.cache/pending_search.json` 或其他缓存文件**。所有行程解析必须通过 `nl_to_search.py parse` 或 `nl_to_search.py build --intent-file` 命令执行，由脚本负责写入缓存文件。Agent 手动写入的 payload 会丢失舱位（如 V 舱被映射为 Y）、航司、航班号等过滤条件，导致搜索结果完全不准确。**发现自己想手动写入 JSON 文件时，立即停止，改走脚本路径。**
+
 ### 步骤 0：判断输入类型（必须先做）
 
 收到用户搜索请求后，**先判断输入是自然语言还是 GDS/PNR 格式**：
@@ -92,15 +94,27 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 ### GDS/PNR 格式路径
 
-1. **解析**：从 GDS 行提取出发地、目的地、日期、人数，构造 intent JSON，将原始 GDS 航段行整体放入 `gdsText` 字段，保存为临时文件，执行：  
-   `{baseDir}/scripts/nl_to_search.py build --intent-file <intent文件路径>`  
-   → intent 格式示例：  
+**严禁跳过脚本自行解析 GDS 并手动构造 payload。** 必须严格按以下步骤执行：
+
+1. **构造 intent 文件**：从 GDS 行提取出发地、目的地、日期、人数，将原始 GDS 航段行整体放入 `gdsText` 字段，用 Agent 工具（如 write_file）写成临时 intent JSON 文件。  
+   → intent 格式（以 `SS WS221 V 01JUL YWGYYC NN2` 为例）：  
    ```json
-   {"tripType":"OW","legs":[{"originText":"YWG","destinationText":"YYC","depDateText":"2026-07-01"}],"passengers":{"adult":2},"gdsText":"SS WS221 V 01JUL YWGYYC NN2"}
+   {
+     "tripType": "OW",
+     "legs": [{"originText": "YWG", "destinationText": "YYC", "depDateText": "2026-07-01"}],
+     "passengers": {"adult": 2},
+     "gdsText": "SS WS221 V 01JUL YWGYYC NN2"
+   }
    ```
-   → 脚本自动提取：舱位字母（`V`，**不映射为 Y**）、承运人（`WS`，写入 `preferredCarrier`）、航班号（`WS221`，写入 `preferredFlightNo`），并自动跳过六字机场代码的模糊航司扫描。
-2. **确认**：展示 `userView.intentSummary`（含舱位/航班号/航司），**等待用户确认**行程信息无误。**禁止在用户确认前执行搜索**。
-3. **搜索**：用户确认后执行  
+   **注意**：`gdsText` 必须包含完整的原始 GDS 航段行，不得省略。Agent **不得**自行把舱位 `V` 映射为 `Y`，也不得自行决定 `preferredCarrier`——这些由脚本处理。
+
+2. **执行解析脚本**：  
+   `{baseDir}/scripts/nl_to_search.py build --intent-file <intent文件路径>`  
+   → 脚本自动从 `gdsText` 结构化提取：舱位字母（`V`，**不映射为 Y**）、承运人（`WS`，写入 `preferredCarrier` 发服务端过滤）、航班号（`WS221`，写入 `preferredFlightNo` 客户端精确匹配），并自动跳过六字机场代码（如 YWGYYC）的模糊航司扫描，避免 YW/YY 被误识别。
+
+3. **确认**：展示 `userView.intentSummary`（含舱位/航班号/航司/人数），**等待用户确认**行程信息无误。**禁止在用户确认前执行搜索**。
+
+4. **搜索**：用户确认后执行  
    `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json`
    → 展示要求同自然语言路径步骤 2。
 
