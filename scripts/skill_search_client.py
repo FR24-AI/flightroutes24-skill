@@ -21,6 +21,7 @@ from config import (  # noqa: E402
     CLIENT_KEY_FILE,
     CLIENT_KEY_HEADER,
     GRAY_HEADER,
+    PASSENGERS_FILE,
     PENDING_PAYLOAD_FILE,
     SKILL_ID,
 )
@@ -96,6 +97,9 @@ def search_v2(payload: dict, *, selection: str = "direct") -> dict:
             ),
             encoding="utf-8",
         )
+        # 每次新搜索成功后清除旧乘客数据，强制下次预订重新收集
+        if PASSENGERS_FILE.exists():
+            PASSENGERS_FILE.unlink()
     return result
 
 
