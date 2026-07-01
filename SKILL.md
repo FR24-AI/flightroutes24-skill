@@ -72,14 +72,37 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 > **强制要求**：每次用户发起查价（含重新搜索、修改条件后搜索），**必须重新执行搜索脚本**，不得直接展示对话历史中的旧搜索结果。旧报价数据（价格、报价ID）可能已失效，沿用会导致校验失败。严禁在未执行搜索脚本的情况下向用户展示任何报价信息。
 
+### 步骤 0：判断输入类型（必须先做）
+
+收到用户搜索请求后，**先判断输入是自然语言还是 GDS/PNR 格式**：
+
+- **GDS/PNR 格式**：输入中含有形如 `SS WS221 V 01JUL YWGYYC NN2` 的航段行（航司二字码+航班号+舱位单字母+日期+六字机场对，常以 `SS`/`HK`/`NN` 开头） → **走下方「GDS 格式」分支，禁止走自然语言 `parse --text` 路径**
+- **自然语言**：中文/英文描述行程（如"北京飞曼谷 7月1日"） → 走步骤 1
+
+### 自然语言路径
+
 1. **解析**：`{baseDir}/scripts/nl_to_search.py parse --text "..."`（不消耗演示日配额）  
-   → 用 `userView` 确认行程、日期、人数、舱位。
-2. **搜索**：用户确认后
+   → 展示 `userView`，**等待用户确认**行程、日期、人数、舱位后，才能执行步骤 2。
+2. **搜索**：用户确认后执行  
    `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer`
    → 按 **[output-rules.md](./references/output-rules.md)** 以**纯文本分行格式**（禁止 Markdown 表格/标题/粗体）展示，**顺序固定：先列完所有直飞，再列中转**。
    → `userView.directOptions` 有多少条展示多少条，**不得截断、不得用"部分"或"更多"等方式省略**，每条独占多行。
    → 每条必须包含：序号①②③、航班号、完整航线、各段起降时间（跨日注"次日"）、价格、**实际退改规则**（不得用通用话术）、行李（每段）、**完整报价ID**（不得截断）。
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
+
+### GDS/PNR 格式路径
+
+1. **解析**：从 GDS 行提取出发地、目的地、日期、人数，构造 intent JSON，将原始 GDS 航段行整体放入 `gdsText` 字段，保存为临时文件，执行：  
+   `{baseDir}/scripts/nl_to_search.py build --intent-file <intent文件路径>`  
+   → intent 格式示例：  
+   ```json
+   {"tripType":"OW","legs":[{"originText":"YWG","destinationText":"YYC","depDateText":"2026-07-01"}],"passengers":{"adult":2},"gdsText":"SS WS221 V 01JUL YWGYYC NN2"}
+   ```
+   → 脚本自动提取：舱位字母（`V`，**不映射为 Y**）、承运人（`WS`，写入 `preferredCarrier`）、航班号（`WS221`，写入 `preferredFlightNo`），并自动跳过六字机场代码的模糊航司扫描。
+2. **确认**：展示 `userView.intentSummary`（含舱位/航班号/航司），**等待用户确认**行程信息无误。**禁止在用户确认前执行搜索**。
+3. **搜索**：用户确认后执行  
+   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json`
+   → 展示要求同自然语言路径步骤 2。
 
 ---
 
