@@ -303,6 +303,16 @@ def format_order_data(raw: dict) -> dict[str, Any]:
             f"状态 / status {body.get('orderStatus')}，"
             f"总价 / total {body.get('totalPrice')} {body.get('currency', '')}。"
         )
+        pay_deadline = body.get("payDeadline") or ""
+        pay_tip = "请登录 https://www.flightroutes24.com/ 在「订单管理」中完成支付"
+        if pay_deadline:
+            pay_tip += f"，支付截止时间：{pay_deadline}"
+        pay_tip += "，逾期订单将自动取消。"
+        pay_tip += " / Please log in to https://www.flightroutes24.com/ and pay under 'Order Management'"
+        if pay_deadline:
+            pay_tip += f", pay before {pay_deadline}"
+        pay_tip += "."
+        lines.append(pay_tip)
     else:
         lines.append(f"生单失败 / Order failed：{raw.get('message') or code}")
 

@@ -108,6 +108,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 | 3 | 用户回复「**乘客信息确认无误**」或 **"passenger info confirmed"** → `verify --passenger-confirmed` |
 | 4 | 展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」或 **"confirm order"** |
 | 5 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` |
+|| 6 | 生单成功后，告知用户登录 https://www.flightroutes24.com/ 在「订单管理」中完成支付，提醒支付截止时间（userView.payDeadline），逾期将自动取消 |
 
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
 - 禁止：未确认乘客即校验；未确认即生单。
