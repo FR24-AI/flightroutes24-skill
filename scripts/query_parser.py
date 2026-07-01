@@ -154,7 +154,13 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
             "resultCtrl": min(20, int(prefs.get("resultCtrl", 15))),
         },
     }
-    if prefs.get("preferredCarrier"):
+    if gds_segments:
+        # GDS 格式：只用结构化解析出的承运人，不被 intent.preferences 里可能含有的
+        # 误识别代码（如机场六字代码拆分出的 YW/YY）覆盖。
+        gds_carriers = list(dict.fromkeys(s["carrier"] for s in gds_segments))
+        if gds_carriers:
+            payload["preferences"]["preferredCarrier"] = gds_carriers
+    elif prefs.get("preferredCarrier"):
         payload["preferences"]["preferredCarrier"] = prefs["preferredCarrier"]
     if prefs.get("prohibitedCarrier"):
         payload["preferences"]["prohibitedCarrier"] = prefs["prohibitedCarrier"]
@@ -270,9 +276,18 @@ def parse_simple_text(text: str) -> tuple[dict | None, str | None, str | None]:
     elif "经济" in raw:
         intent["cabinText"] = "经济舱"
 
-    carriers = parse_carriers_from_text(raw)
-    if carriers:
-        intent.setdefault("preferences", {})["preferredCarrier"] = carriers
+    # 检测是否为 GDS 格式文本。若是，用结构化解析出的承运人，不做模糊航司扫描，
+    # 避免机场六字代码（如 YWGYYC）被 _CARRIER_CODE_RE 误拆为 YW/YY 航司。
+    gds_segs_quick = parse_gds_segments(raw)
+    if gds_segs_quick:
+        gds_carriers = list(dict.fromkeys(s["carrier"] for s in gds_segs_quick))
+        if gds_carriers:
+            intent.setdefault("preferences", {})["preferredCarrier"] = gds_carriers
+        intent["gdsText"] = raw
+    else:
+        carriers = parse_carriers_from_text(raw)
+        if carriers:
+            intent.setdefault("preferences", {})["preferredCarrier"] = carriers
     window, time_label = parse_dep_time_window(raw)
     if window:
         intent.setdefault("preferences", {})["depTimeWindow"] = window

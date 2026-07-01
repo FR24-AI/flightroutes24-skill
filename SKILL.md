@@ -95,11 +95,34 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 航司写入 `preferences.preferredCarrier` 并提交服务端；具体航班号写入 `preferences.preferredFlightNo`（仅客户端本地过滤，不随请求体发往服务端，用于在结果汇总阶段精确匹配展示）；起飞时段在结果汇总时按首段起飞时间过滤展示。
 
-### GDS 格式输入（如 `WS221V06JUL` / `WS 221 V 06JUL`）
+### GDS 格式输入（如 `SS WS221 V 01JUL YWGYYC NN2`）
 
-- 用户粘贴 GDS 航段行时，**原样**把该行文本传给 `parse` / `refine`（作为 `--text` 或 intent 的 `gdsText`/`passengerText`），不要自己先做语义转换或摘要改写。
-- 脚本会按位置结构化提取承运人、航班号、舱位单字母，精度优于自然语言解析，避免具体舱位代码（如 V/Q/K）被误归类为经济舱等粗粒度舱等。
-- 舱位/航班号解析结果体现在 `userView.intentSummary` 与 `searchFilters` 中，确认无误后再执行 `search`。
+识别特征：航司二字码+航班号数字+舱位单字母+日期（DDMon）+六字机场对，常以 `SS`/`HK`/`NN` 开头。
+
+**必须走 intent 路径（`build --intent-file`），禁止直接传给 `parse --text`。** 原因：`parse` 命令仅支持自然语言行程描述，GDS 行无法被其路由/日期正则匹配，会直接报错。
+
+正确处理步骤：
+
+1. 从 GDS 行提取出发地（如 `YWG`）、目的地（如 `YYC`）、日期（如 `01JUL`→`2026-07-01`）、人数（`NN2`→2成人），构造 intent JSON 文件：
+
+   ```json
+   {
+     "tripType": "OW",
+     "legs": [{"originText": "YWG", "destinationText": "YYC", "depDateText": "2026-07-01"}],
+     "passengers": {"adult": 2},
+     "gdsText": "SS WS221 V 01JUL YWGYYC NN2"
+   }
+   ```
+
+2. 执行 `{baseDir}/scripts/nl_to_search.py build --intent-file <intent文件路径>`
+
+3. 脚本自动从 `gdsText` 结构化提取：
+   - 舱位单字母（`V`）原样使用，**不映射为 Y**
+   - 承运人（`WS`）写入 `preferredCarrier` 发服务端过滤
+   - 航班号（`WS221`）写入 `preferredFlightNo` 用于本地精确匹配
+   - **自动跳过**对六字机场代码（如 YWGYYC）的模糊航司扫描，避免 YW/YY 被误识别为航司
+
+4. 向用户确认 `userView.intentSummary`（含舱位/航班号/航司）后再执行 `search`。
 
 ---
 
