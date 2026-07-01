@@ -132,35 +132,6 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 航司写入 `preferences.preferredCarrier` 并提交服务端；具体航班号写入 `preferences.preferredFlightNo`（仅客户端本地过滤，不随请求体发往服务端，用于在结果汇总阶段精确匹配展示）；起飞时段在结果汇总时按首段起飞时间过滤展示。
 
-### GDS 格式输入（如 `SS WS221 V 01JUL YWGYYC NN2`）
-
-识别特征：航司二字码+航班号数字+舱位单字母+日期（DDMon）+六字机场对，常以 `SS`/`HK`/`NN` 开头。
-
-**必须走 intent 路径（`build --intent-file`），禁止直接传给 `parse --text`。** 原因：`parse` 命令仅支持自然语言行程描述，GDS 行无法被其路由/日期正则匹配，会直接报错。
-
-正确处理步骤：
-
-1. 从 GDS 行提取出发地（如 `YWG`）、目的地（如 `YYC`）、日期（如 `01JUL`→`2026-07-01`）、人数（`NN2`→2成人），构造 intent JSON 文件：
-
-   ```json
-   {
-     "tripType": "OW",
-     "legs": [{"originText": "YWG", "destinationText": "YYC", "depDateText": "2026-07-01"}],
-     "passengers": {"adult": 2},
-     "gdsText": "SS WS221 V 01JUL YWGYYC NN2"
-   }
-   ```
-
-2. 执行 `{baseDir}/scripts/nl_to_search.py build --intent-file <intent文件路径>`
-
-3. 脚本自动从 `gdsText` 结构化提取：
-   - 舱位单字母（`V`）原样使用，**不映射为 Y**
-   - 承运人（`WS`）写入 `preferredCarrier` 发服务端过滤
-   - 航班号（`WS221`）写入 `preferredFlightNo` 用于本地精确匹配
-   - **自动跳过**对六字机场代码（如 YWGYYC）的模糊航司扫描，避免 YW/YY 被误识别为航司
-
-4. 向用户确认 `userView.intentSummary`（含舱位/航班号/航司）后再执行 `search`。
-
 ---
 
 ## 预订流程
@@ -201,7 +172,8 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 
 | 命令 | 说明 |
 |------|------|
-| `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程 |
+| `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程（自然语言） |
+| `{baseDir}/scripts/nl_to_search.py build --intent-file <文件>` | 解析行程（GDS/PNR，intent JSON 含 `gdsText` 字段） |
 | `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件 |
 | `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索（v2，直飞按航班号去重） |
 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
