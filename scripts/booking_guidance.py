@@ -61,8 +61,9 @@ PASSENGER_INFO_EXAMPLES_EN: list[str] = [
 ]
 
 BOOKING_SELECTION_USER_PROMPT = (
-    "如需预订，请告知选择的直飞序号（如「第3条」）或报价ID，或回复「中转」选择中转报价；"
-    "确认后请提供乘客与联系人信息。"
+    "如需预订，请告知选择的直飞序号（如「第3条」）、报价ID、或航班号（如 SQ8617）；"
+    "也可回复「中转」选择中转报价。"
+    "选定后请提供乘客与联系人信息。"
 )
 
 BOOKING_SELECTION_USER_PROMPT_EN = (
@@ -72,7 +73,8 @@ BOOKING_SELECTION_USER_PROMPT_EN = (
 
 # 标准预订顺序（Agent 必须遵守）
 BOOKING_WORKFLOW_STEPS = [
-    "skill_search_client.py search → 展示报价；多条时用户选择直飞/中转",
+    "skill_search_client.py search → 展示报价（默认不自动选价）",
+    "用户选择序号/报价ID/航班号 → skill_search_client.py select --index N（或 --offer-id / --flight / --pick transfer）",
     "skill_booking_client.py parse-passengers → 展示字段对照表",
     "用户回复「乘客信息确认无误」→ skill_booking_client.py verify --passenger-confirmed",
     "校验成功 → 展示 orderPreview → 用户回复「确认生单」",
@@ -211,7 +213,8 @@ def selection_required_payload(choices: list[dict[str, Any]]) -> dict[str, Any]:
         "bookingChoices": choices,
         "selectionRequired": True,
         "nextSteps": [
-            "用户明确选择 direct 或 transfer",
+            "用户明确选择：select --index N / --offer-id / --flight / --pick transfer",
+            "禁止为选序号重新 search；仅 refine 改条件或 304016 后重搜",
             "parse-passengers → 用户确认乘客 → verify --passenger-confirmed → order --user-confirmed",
         ],
     }

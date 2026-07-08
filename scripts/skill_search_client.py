@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 # 允许从 skill 根目录导入 config
 _ROOT = Path(__file__).resolve().parent.parent
@@ -23,8 +24,14 @@ from config import (  # noqa: E402
     SKILL_ID,
 )
 
-from booking_format import wrap_search_v2  # noqa: E402
+from booking_format import wrap_search_v2, wrap_select  # noqa: E402
 from newapi_client import run_search_v2  # noqa: E402
+from offer_select import (  # noqa: E402
+    apply_offer_selection,
+    load_booking_context,
+    resolve_offer_selection,
+    save_booking_context,
+)
 from skill_client_key import ensure_client_key  # noqa: E402
 
 
@@ -40,7 +47,34 @@ def quota_status() -> dict:
     }
 
 
-def search_v2(payload: dict, *, selection: str = "direct") -> dict:
+def _write_booking_context(
+    payload: dict,
+    agent: dict[str, Any],
+    *,
+    mode: str,
+    selection: str | None = None,
+    selected: dict | None = None,
+) -> None:
+    ctx: dict[str, Any] = {
+        "searchPayload": payload,
+        "searchMode": mode,
+        "traceId": agent.get("traceId"),
+        "processingTime": agent.get("processingTime"),
+        "directOptions": agent.get("directOptions"),
+        "directLowest": agent.get("directLowest"),
+        "transferLowest": agent.get("transferLowest"),
+    }
+    if selection and selected:
+        ctx["selection"] = selection
+        ctx["selectedOffer"] = selected
+    else:
+        ctx["selection"] = None
+    save_booking_context(ctx)
+    if PASSENGERS_FILE.exists():
+        PASSENGERS_FILE.unlink()
+
+
+def search_v2(payload: dict, *, selection: str = "none") -> dict:
     """v2 搜索：直飞按航班号去重，每航班号取最低价，最多 20 条。"""
     raw, mode = run_search_v2(payload)
     code = str(raw.get("code", ""))
@@ -50,34 +84,46 @@ def search_v2(payload: dict, *, selection: str = "direct") -> dict:
         return result
 
     agent = result.get("agentOnly") or {}
-    pick = (selection or "direct").strip().lower()
-    selected = agent.get("directLowest") if pick == "direct" else agent.get("transferLowest")
-    if not selected:
-        selected = agent.get("directLowest") or agent.get("transferLowest")
+    pick = (selection or "none").strip().lower()
+    selected = None
+    if pick == "direct":
+        selected = agent.get("directLowest")
+    elif pick == "transfer":
+        selected = agent.get("transferLowest")
     if selected:
-        BOOKING_CONTEXT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        BOOKING_CONTEXT_FILE.write_text(
-            json.dumps(
-                {
-                    "searchPayload": payload,
-                    "searchMode": mode,
-                    "traceId": agent.get("traceId"),
-                    "processingTime": agent.get("processingTime"),
-                    "selection": pick,
-                    "selectedOffer": selected,
-                    "directOptions": agent.get("directOptions"),
-                    "directLowest": agent.get("directLowest"),
-                    "transferLowest": agent.get("transferLowest"),
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        # 每次新搜索成功后清除旧乘客数据，强制下次预订重新收集
-        if PASSENGERS_FILE.exists():
-            PASSENGERS_FILE.unlink()
+        _write_booking_context(payload, agent, mode=mode, selection=pick, selected=selected)
+    else:
+        _write_booking_context(payload, agent, mode=mode)
     return result
+
+
+def select_offer(
+    *,
+    index: int | None = None,
+    offer_id: str | None = None,
+    flight: str | None = None,
+    pick: str | None = None,
+    context_file: Path | None = None,
+) -> dict:
+    ctx = load_booking_context(context_file or BOOKING_CONTEXT_FILE)
+    selected, selection_key, err = resolve_offer_selection(
+        ctx,
+        index=index,
+        offer_id=offer_id,
+        flight=flight,
+        pick=pick,
+    )
+    if err or not selected or not selection_key:
+        from output_export import failure_envelope  # noqa: E402
+
+        return failure_envelope(
+            "select",
+            err or "选择失败",
+            agent_only={"detail": "请先 search，再用 select --index / --offer-id / --flight / --pick"},
+        )
+    updated = apply_offer_selection(ctx, selected, selection_key)
+    save_booking_context(updated, context_file or BOOKING_CONTEXT_FILE)
+    return wrap_select(selected, updated, selection_key=selection_key)
 
 
 def main():
@@ -90,9 +136,23 @@ def main():
     p_search.add_argument("--payload-file", required=True, help="SkillSearchRq JSON 文件")
     p_search.add_argument(
         "--selection",
-        default="direct",
-        choices=("direct", "transfer"),
-        help="写入 booking_context 的选定报价（用户确认后）",
+        default="none",
+        choices=("none", "direct", "transfer"),
+        help="搜索后自动选中：none=仅缓存列表（默认）；direct=直飞最低；transfer=中转最低",
+    )
+    p_select = sub.add_parser("select", help="从上次搜索结果中选择报价（不重新搜索）")
+    p_select.add_argument("--index", type=int, help="直飞列表序号（从 1 开始，对应展示的第 N 条）")
+    p_select.add_argument("--offer-id", dest="offer_id", help="报价ID（quoteId）")
+    p_select.add_argument("--flight", help="航班号（如 SQ8617）")
+    p_select.add_argument(
+        "--pick",
+        choices=("direct-lowest", "transfer"),
+        help="选中直飞最低或中转最低（等同 search --selection direct|transfer，但不重搜）",
+    )
+    p_select.add_argument(
+        "--context-file",
+        default=str(BOOKING_CONTEXT_FILE),
+        help="booking_context.json 路径",
     )
     args = parser.parse_args()
     if args.cmd == "ensure-key":
@@ -100,6 +160,14 @@ def main():
         out = quota_status()
     elif args.cmd == "quota-status":
         out = quota_status()
+    elif args.cmd == "select":
+        out = select_offer(
+            index=args.index,
+            offer_id=args.offer_id,
+            flight=args.flight,
+            pick=args.pick,
+            context_file=Path(args.context_file),
+        )
     else:
         payload = json.loads(Path(args.payload_file).read_text(encoding="utf-8"))
         PENDING_PAYLOAD_FILE.parent.mkdir(parents=True, exist_ok=True)

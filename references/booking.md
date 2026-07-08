@@ -10,7 +10,8 @@ Without a configured procurement APPKEY, only demo fare search is available; ver
 
 | 步骤 | 命令 | 用户确认（中文） | User confirmation (English) |
 |------|------|----------|------|
-| 1 | `nl_to_search.py parse` → `skill_search_client.py search --selection direct\|transfer` | 选择直飞或中转 | Choose "direct" or "connecting" |
+| 1 | `nl_to_search.py parse` → `skill_search_client.py search` | 选择报价（序号/报价ID/航班号） | Pick fare by index, quote ID, or flight no. |
+| 1b | `skill_search_client.py select --index N`（或 `--offer-id` / `--flight` / `--pick transfer`） | — | — |
 | 2 | `skill_booking_client.py parse-passengers --text "..."` | 「乘客信息确认无误」 | "passenger info confirmed" |
 | 3 | `skill_booking_client.py verify --passenger-confirmed` | — | — |
 | 3b | 若返回 **304016**（身份不一致） | 须重新执行 **search**（新配置 APPKEY 后必做） | Must re-run **search** after configuring new APPKEY |
@@ -23,7 +24,8 @@ Without a configured procurement APPKEY, only demo fare search is available; ver
 set PYTHONIOENCODING=utf-8
 
 python scripts/nl_to_search.py parse --text "深圳到曼谷 6月2日"
-python scripts/skill_search_client.py search --payload-file .cache/pending_search.json --selection direct
+python scripts/skill_search_client.py search --payload-file .cache/pending_search.json
+python scripts/skill_search_client.py select --index 1
 
 python scripts/skill_booking_client.py parse-passengers --text "张三 男 1990-01-15 护照E12345678，2030-12-31到期 国籍CN。联系人：张三 手机13800138000 邮箱 zhangsan@example.com"
 

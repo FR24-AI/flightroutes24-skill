@@ -40,6 +40,7 @@ from output_export import (  # noqa: E402
     order_user_view,
     search_agent_only,
     search_user_view,
+    user_offer,
     verify_agent_only,
     verify_user_view,
     wrap_envelope,
@@ -196,6 +197,47 @@ def wrap_search_v2(
         user_view=user_view,
         agent_only=search_agent_only(internal),
         message=user_view.get("message", ""),
+    )
+
+
+def wrap_select(
+    selected: dict[str, Any],
+    ctx: dict[str, Any],
+    *,
+    selection_key: str,
+) -> dict[str, Any]:
+    """用户从已展示列表选定报价后的响应（不重新搜索）。"""
+    offer_uv = user_offer(selected) or {}
+    flights = offer_uv.get("flights") or selected.get("flights") or ""
+    quote_id = offer_uv.get("quoteId") or selected.get("offerId")
+    price = offer_uv.get("totalPrice")
+    currency = offer_uv.get("currency") or "CNY"
+    route = offer_uv.get("route") or selected.get("route") or ""
+    msg = (
+        f"已选择报价：{flights} {route}，约 {price} {currency}/人。"
+        f"报价ID：{quote_id}。"
+        f"请提供本次预订的乘客与联系人信息。"
+    )
+    user_view: dict[str, Any] = {
+        "selectedOffer": offer_uv,
+        "passengerInfoPrompt": PASSENGER_INFO_USER_PROMPT,
+        "passengerInfoExamples": PASSENGER_INFO_EXAMPLES,
+        "message": msg,
+    }
+    agent_only: dict[str, Any] = {
+        "selection": selection_key,
+        "offerId": selected.get("offerId"),
+        "traceId": ctx.get("traceId"),
+        "processingTime": ctx.get("processingTime"),
+        "workflowSteps": BOOKING_WORKFLOW_STEPS,
+        "nextStep": "skill_booking_client.py parse-passengers --text \"<用户输入>\"",
+    }
+    return wrap_envelope(
+        action="select",
+        status="success",
+        user_view=user_view,
+        agent_only=agent_only,
+        message=msg,
     )
 
 

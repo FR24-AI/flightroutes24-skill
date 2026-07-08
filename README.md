@@ -135,7 +135,8 @@ fr24-ai/
 | `python scripts/nl_to_search.py parse --text "..."` | 解析行程 | 否 |
 | `python scripts/nl_to_search.py refine --text "..."` | 合并航司/时段等条件 | 否 |
 | `python scripts/skill_search_client.py search --payload-file .cache/pending_search.json` | 搜索 | 是（演示模式） |
-| `python scripts/skill_search_client.py search ... --selection direct\|transfer` | 搜索并选中直飞/中转 | 是 |
+| `python scripts/skill_search_client.py search ...` | 搜索（默认不自动选价） | 是 |
+| `python scripts/skill_search_client.py select --index N` | 从缓存选第 N 条直飞（不重搜） | 否 |
 | `python scripts/skill_booking_client.py parse-passengers --text "..."` | 解析乘客 | — |
 | `python scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 | — |
 | `python scripts/skill_booking_client.py order --user-confirmed` | 生单 | — |

@@ -84,6 +84,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 | 2 | 等待用户确认 | 禁止未确认即搜索 |
 | 3 | `python3 scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 用户确认后执行 |
 
+- 用户从列表选「第 N 条」时：**`select --index N`**，**禁止**再 `search` 或误用 `search --selection direct`（那只是直飞最低价）。
 - 输入已是 **IATA 三字码**（如 YYC、PEK）时，**不会**调用 `/ai/place/resolve`，属正常设计。
 - 输入为 **中文/英文城市名** 时，脚本自动调 export 地名接口（请求头 `gray: ww`）。
 - **禁止**从 YYC/YWG 等机场码误推航司；脚本已屏蔽此类误识别。若历史 payload 仍含错误 `preferredCarrier`，可执行 `refine --text "清除航司筛选"`。
@@ -116,8 +117,9 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 1. **解析**：`{baseDir}/scripts/nl_to_search.py parse --text "..."`（不消耗演示日配额）  
    → 展示 `userView`，**等待用户确认**行程、日期、人数、舱位后，才能执行步骤 2。
 2. **搜索**：用户确认后执行  
-   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json --selection direct|transfer`
-   → 按 **[output-rules.md](./references/output-rules.md)** 以**纯文本分行格式**（禁止 Markdown 表格/标题/粗体）展示，**顺序固定：先列完所有直飞，再列中转**。
+   `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json`  
+   → 默认**不自动选价**（`--selection none`）；仅缓存 `directOptions` 到 `booking_context.json`。  
+   → 按 **[output-rules.md](./references/output-rules.md)** 以**纯文本分行格式**展示，**顺序固定：先列完所有直飞，再列中转**。
    → `userView.directOptions` 有多少条展示多少条，**不得截断、不得用"部分"或"更多"等方式省略**，每条独占多行。
    → 每条必须包含：序号①②③、航班号、完整航线、各段起降时间（跨日注"次日"）、价格、**实际退改规则**（不得用通用话术）、行李（每段）、**完整报价ID**（不得截断）。
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
@@ -170,12 +172,28 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 | 步骤 | 动作 |
 |------|------|
-| 1 | 用户选择直飞或中转 → `search --selection direct\|transfer` |
-| 2 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` → 展示 `passengerDisplay`、`contactDisplay`（示例姓名：**张三** / EN: **John Doe**） |
+| 1 | 用户从已展示列表选择报价 → **`select`（禁止为选序号重新 `search`）** |
+| 2 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` → 展示 `passengerDisplay`、`contactDisplay` |
 | 3 | 用户回复「**乘客信息确认无误**」或 **"passenger info confirmed"** → `verify --passenger-confirmed` |
-| 4 | 展示 `orderPreview`（行程、退改、乘客回显）、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」或 **"confirm order"** |
+| 4 | 展示 `orderPreview`、**报价ID**（`quoteId`）→ 用户回复「**确认生单**」或 **"confirm order"** |
 | 5 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` |
-|| 6 | 生单成功后，告知用户登录 https://www.flightroutes24.com/ 在「订单管理」中完成支付，提醒支付截止时间（userView.payDeadline），逾期将自动取消 |
+| 6 | 生单成功后，告知用户登录 https://www.flightroutes24.com/ 在「订单管理」中完成支付 |
+
+### 选择报价（`select`，必读）
+
+用户说「第3条」「第三个」「要 SQ8617」「报价ID xxx」「中转」时，**必须**从上次 `search` 缓存的 `booking_context.json` 中选价，**不得**再执行 `search`：
+
+| 用户意图 | 命令 |
+|----------|------|
+| 直飞第 N 条（如「第三个」） | `skill_search_client.py select --index 3` |
+| 报价ID | `skill_search_client.py select --offer-id <quoteId>` |
+| 航班号 | `skill_search_client.py select --flight SQ8617` |
+| 直飞最低 | `skill_search_client.py select --pick direct-lowest` |
+| 中转最低 | `skill_search_client.py select --pick transfer` |
+
+> **常见错误**：`search --selection direct` 表示「直飞最低价」，**不是**「直飞列表第 N 条」。选序号必须用 `select --index N`。
+
+仅在以下情况重新 `search`：用户修改行程/日期/航司/时段（`refine` 后）、校验返回 **304016**、或上一轮搜索已过期需重查。
 
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
 - 禁止：未确认乘客即校验；未确认即生单。
@@ -205,7 +223,9 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 | `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程（自然语言） |
 | `{baseDir}/scripts/nl_to_search.py build --intent-file <文件>` | 解析行程（GDS/PNR，intent JSON 含 `gdsText` 字段） |
 | `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件（`清除航司筛选` 可去掉误识别或已指定的航司） |
-| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索（v2，直飞按航班号去重） |
+| `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索（v2，默认不自动选价） |
+| `{baseDir}/scripts/skill_search_client.py select --index 3` | 从缓存选第 3 条直飞（不重搜） |
+| `{baseDir}/scripts/skill_search_client.py select --offer-id <id>` / `--flight SQ8617` / `--pick transfer` | 按报价ID、航班号或类别选价 |
 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
 | `{baseDir}/scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 |
 | `{baseDir}/scripts/skill_booking_client.py order --user-confirmed` | 生单 |
