@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import secrets
 import sys
-from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 # 允许从 skill 根目录导入 config
 _ROOT = Path(__file__).resolve().parent.parent
@@ -28,27 +25,7 @@ from config import (  # noqa: E402
 
 from booking_format import wrap_search_v2  # noqa: E402
 from newapi_client import run_search_v2  # noqa: E402
-
-BJ = ZoneInfo("Asia/Shanghai")
-
-
-def ensure_client_key() -> str:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    if CLIENT_KEY_FILE.exists():
-        data = json.loads(CLIENT_KEY_FILE.read_text(encoding="utf-8"))
-        key = data.get("clientKey", "")
-        if len(key) >= 32:
-            return key
-    key = secrets.token_urlsafe(32)
-    CLIENT_KEY_FILE.write_text(
-        json.dumps(
-            {"clientKey": key, "createdAt": datetime.now(BJ).isoformat()},
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    return key
+from skill_client_key import ensure_client_key  # noqa: E402
 
 
 def quota_status() -> dict:

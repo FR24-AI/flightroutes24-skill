@@ -87,6 +87,17 @@ _TIME_POINT_RE = re.compile(
 _TIME_HALF_RE = re.compile(r"(\d{1,2})\s*点半")
 # 完整航班号（如 WS221），用于 refine 时识别用户指定的具体航班。
 _FLIGHT_NO_RE = re.compile(r"\b([A-Z]{2})\s*-?\s*(\d{1,4})\b", re.I)
+# 三字 IATA 机场/城市码（避免 YYC→YY、YWG→YW 误识别为航司；不用 \b，避免与中文粘连时失效）
+_IATA_AIRPORT_TOKEN_RE = re.compile(r"(?<![A-Z])([A-Z]{3})(?![A-Z])")
+_CLEAR_CARRIER_RE = re.compile(
+    r"(?:清除|取消|去掉|不限|不要).{0,6}航司|所有航司|any\s+airline",
+    re.I,
+)
+
+
+def mask_iata_airport_tokens(text: str) -> str:
+    """将文本中的三字 IATA 码替换为空格，避免航司扫描误拆（如 YYC→YY）。"""
+    return _IATA_AIRPORT_TOKEN_RE.sub("   ", text.upper())
 
 
 def parse_flight_nos_from_text(text: str) -> list[str]:
@@ -105,7 +116,8 @@ def parse_flight_nos_from_text(text: str) -> list[str]:
 def parse_carriers_from_text(text: str) -> list[str]:
     found: list[str] = []
     seen: set[str] = set()
-    for m in _CARRIER_CODE_RE.finditer(text):
+    scan_text = mask_iata_airport_tokens(text)
+    for m in _CARRIER_CODE_RE.finditer(scan_text):
         code = m.group(1).upper()
         if code not in seen:
             seen.add(code)
@@ -211,7 +223,8 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
     if not t:
         return payload, "", "请说明要调整的条件，例如「要 CA 航司」或「中午 12 点左右起飞」"
 
-    carriers = parse_carriers_from_text(t)
+    clear_carriers = bool(_CLEAR_CARRIER_RE.search(t))
+    carriers = [] if clear_carriers else parse_carriers_from_text(t)
     flight_nos = parse_flight_nos_from_text(t)
     window, time_label = parse_dep_time_window(t)
     t_lower = t.lower()
@@ -220,7 +233,7 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
         or ("nonstop" in t_lower or "non-stop" in t_lower or "direct only" in t_lower or "direct flight" in t_lower)
     )
 
-    if not carriers and not flight_nos and not window and not direct_only:
+    if not clear_carriers and not carriers and not flight_nos and not window and not direct_only:
         return (
             payload,
             "",
@@ -230,7 +243,9 @@ def apply_refinement(payload: dict[str, Any], text: str) -> tuple[dict[str, Any]
     out = copy.deepcopy(payload)
     prefs = dict(out.get("preferences") or {})
 
-    if carriers:
+    if clear_carriers:
+        prefs.pop("preferredCarrier", None)
+    elif carriers:
         existing = [str(c).upper() for c in (prefs.get("preferredCarrier") or [])]
         merged = list(dict.fromkeys(existing + carriers))
         prefs["preferredCarrier"] = merged

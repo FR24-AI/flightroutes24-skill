@@ -66,6 +66,36 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 
 ---
 
+## OpenClaw 适配（必读）
+
+本 Skill 的 `SKILL.md` frontmatter 含 `metadata.openclaw`，安装路径通常为 `{baseDir}`（如 `/root/.openclaw/skills/fr24-ai`）。OpenClaw Agent **必须执行脚本**，不得自行推断行程或手写 `pending_search.json`。
+
+### 启动与初始化
+
+1. **首次查价/解析前**：`parse` / `build` 会自动生成 `clientKey`（写入 `{baseDir}/.cache/skill_client.json`），无需单独记忆 `ensure-key`；维护者自检仍可执行 `skill_search_client.py ensure-key`。
+2. **Python**：需满足 `metadata.openclaw.requires.anyBins`（`python3` 或 `python`）；预订功能执行 `pip install -r requirements.txt`（或 OpenClaw install 步骤）。
+3. **采购密钥**：通过环境变量 `FR_NEWAPI_APPKEY` 等配置；OpenClaw 以 `primaryEnv: FR_NEWAPI_APPKEY` 识别。环境变量优先级高于 `.cache/keys.json`。
+
+### 查价流程（OpenClaw）
+
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1 | `cd {baseDir} && python3 scripts/nl_to_search.py parse --text "..."` | **必须**执行；stdout 为 JSON，只向用户展示 `userView` |
+| 2 | 等待用户确认 | 禁止未确认即搜索 |
+| 3 | `python3 scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 用户确认后执行 |
+
+- 输入已是 **IATA 三字码**（如 YYC、PEK）时，**不会**调用 `/ai/place/resolve`，属正常设计。
+- 输入为 **中文/英文城市名** 时，脚本自动调 export 地名接口（请求头 `gray: ww`）。
+- **禁止**从 YYC/YWG 等机场码误推航司；脚本已屏蔽此类误识别。若历史 payload 仍含错误 `preferredCarrier`，可执行 `refine --text "清除航司筛选"`。
+
+### 禁止行为
+
+- 禁止 Agent 手算日期、手写 intent 却不跑 `build --intent-file`
+- 禁止跳过脚本直接展示报价
+- 禁止向用户展示 `agentOnly`、`.cache` 路径或整段 stdout
+
+---
+
 ## 查价流程
 
 > **前提**：搜索接口（v2）需要采购密钥。若返回 `307904`（请提供采购认证信息），说明尚未配置采购密钥，请先按「采购密钥」章节完成配置，再重试搜索。
@@ -174,7 +204,7 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 |------|------|
 | `{baseDir}/scripts/nl_to_search.py parse --text "..."` | 解析行程（自然语言） |
 | `{baseDir}/scripts/nl_to_search.py build --intent-file <文件>` | 解析行程（GDS/PNR，intent JSON 含 `gdsText` 字段） |
-| `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件 |
+| `{baseDir}/scripts/nl_to_search.py refine --text "..."` | 合并航司、起飞时段等条件（`清除航司筛选` 可去掉误识别或已指定的航司） |
 | `{baseDir}/scripts/skill_search_client.py search --payload-file {baseDir}/.cache/pending_search.json` | 搜索（v2，直飞按航班号去重） |
 | `{baseDir}/scripts/skill_booking_client.py parse-passengers --text "..."` | 乘客信息核对 |
 | `{baseDir}/scripts/skill_booking_client.py verify --passenger-confirmed` | 校验报价 |

@@ -86,6 +86,15 @@ fr24-ai/
 
 安装完成后 **重启 Cursor**（或重新打开 Agent 会话），以便根据 `SKILL.md` 的 `description` 自动匹配（如：查航班、搜机票、预订等）。
 
+### 3.3 OpenClaw
+
+将本目录安装到 OpenClaw skills 路径（如 `/root/.openclaw/skills/fr24-ai`），确保 `SKILL.md` frontmatter 中 `metadata.openclaw` 可被识别。
+
+- Agent **必须**执行 `scripts/nl_to_search.py` / `skill_search_client.py`，不得手写 `pending_search.json`。
+- `parse` / `build` 会**自动生成** `clientKey`，无需单独记忆 `ensure-key`（自检仍可用）。
+- 使用 `python3`（与 `metadata.openclaw.requires` 一致）。
+- 详细约束见 **SKILL.md → OpenClaw 适配**。
+
 ---
 
 ## 四、配置

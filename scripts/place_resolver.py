@@ -23,14 +23,13 @@ def _load_export_config():
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
     from config import (  # noqa: WPS433
-        CLIENT_KEY_FILE,
         CLIENT_KEY_HEADER,
         EXPORT_BASE_URL,
         GRAY_HEADER,
         PLACE_RESOLVE_PATH,
     )
 
-    return EXPORT_BASE_URL, PLACE_RESOLVE_PATH, CLIENT_KEY_HEADER, CLIENT_KEY_FILE, GRAY_HEADER
+    return EXPORT_BASE_URL, PLACE_RESOLVE_PATH, CLIENT_KEY_HEADER, GRAY_HEADER
 
 
 def load_places() -> dict[str, str]:
@@ -39,35 +38,25 @@ def load_places() -> dict[str, str]:
     return {k.strip().lower(): v.upper() for k, v in raw.items()}
 
 
-def _ensure_client_key(client_key_file: Path) -> str:
-    if client_key_file.is_file():
-        data = json.loads(client_key_file.read_text(encoding="utf-8"))
-        key = str(data.get("clientKey") or "")
-        if len(key) >= 32:
-            return key
-    raise RuntimeError("clientKey not ready")
-
-
 def _resolve_via_export_api(text: str, *, language: str = "zh_CN") -> dict | None:
     if os.environ.get("FR_PLACE_RESOLVE_OFF", "").strip().lower() in ("1", "true", "yes"):
         return None
     try:
-        base_url, path, header_name, client_key_file, gray_header = _load_export_config()
-        client_key = _ensure_client_key(client_key_file)
+        from skill_client_key import ensure_client_key  # noqa: WPS433
+
+        base_url, path, header_name, gray_header = _load_export_config()
+        client_key = ensure_client_key()
         url = f"{base_url.rstrip('/')}{path}"
         body = json.dumps({"text": text, "language": language, "searchType": 0, "limit": 5}, ensure_ascii=False).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=body,
-            method="POST",
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                header_name: client_key,
-                "Accept": "application/json",
-                "Accept-Encoding": "identity",
-                "fr24-api": gray_header,
-            },
-        )
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            header_name: client_key,
+            "Accept": "application/json",
+            "Accept-Encoding": "identity",
+        }
+        if gray_header:
+            headers["gray"] = gray_header
+        req = urllib.request.Request(url, data=body, method="POST", headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         if str(payload.get("code")) not in _SUCCESS_CODES:

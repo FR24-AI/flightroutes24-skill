@@ -31,11 +31,22 @@ def main() -> int:
 
     sys.path.insert(0, str(_SCRIPTS))
     from fare_summarizer import _summarize_from_data_v2  # noqa: E402
-    from query_parser import build_payload_from_intent, parse_gds_segments  # noqa: E402
+    from query_parser import build_payload_from_intent, parse_gds_segments, parse_simple_text  # noqa: E402
     from search_refinement import apply_refinement, parse_carriers_from_text  # noqa: E402
 
     if parse_carriers_from_text("要CA") != ["CA"]:
         errors.append("parse_carriers_from_text CA")
+
+    if parse_carriers_from_text("YYC到YWG 下周五 1成人"):
+        errors.append("IATA route must not yield preferredCarrier from YYC/YWG")
+
+    parsed_yyc, _, parse_err = parse_simple_text("YYC到YWG 下周五 1成人")
+    if parse_err:
+        errors.append(f"YYC/YWG parse failed: {parse_err}")
+    elif (parsed_yyc.get("preferences") or {}).get("preferredCarrier"):
+        errors.append(
+            f"YYC/YWG parse preferredCarrier: {(parsed_yyc.get('preferences') or {}).get('preferredCarrier')}"
+        )
 
     gds_segs = parse_gds_segments("WS221V06JUL YVRYYZ HK1")
     if gds_segs != [{"carrier": "WS", "flightNo": "WS221", "cabin": "V"}]:

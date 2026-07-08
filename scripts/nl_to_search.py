@@ -14,6 +14,7 @@ if str(_SCRIPTS) not in sys.path:
 from output_export import failure_envelope, parse_user_view, wrap_envelope  # noqa: E402
 from query_parser import _format_summary, build_payload_from_intent, parse_simple_text  # noqa: E402
 from search_refinement import apply_refinement  # noqa: E402
+from skill_client_key import ensure_client_key  # noqa: E402
 
 _ROOT = Path(__file__).resolve().parent.parent
 PENDING = _ROOT / ".cache" / "pending_search.json"
@@ -30,6 +31,9 @@ def main():
         help="refine 时读取的上次搜索条件（默认 .cache/pending_search.json）",
     )
     args = parser.parse_args()
+
+    if args.command in ("parse", "build"):
+        ensure_client_key()
 
     if args.command == "refine":
         pending_path = Path(args.payload_file)
