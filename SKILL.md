@@ -198,7 +198,8 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 - 校验返回 **304016**（身份不一致）：说明新配置 APPKEY 后须**重新 search**，不可沿用旧报价标识。
 - 禁止：未确认乘客即校验；未确认即生单。
 - **每次新搜索后必须重新执行 `parse-passengers`**，不得沿用上一次的乘客信息。
-- **严禁**：搜索完成后用对话历史中的乘客信息自行调用 `parse-passengers`。必须停下来，明确告知用户「请重新提供乘客信息（姓名、证件、联系人）」，**等待用户在本轮对话中输入新内容后**，再调用 `parse-passengers --text "<用户新输入>"`。
+- **`parse-passengers` / `verify` / `order` 会校验证件人数**与搜索 `adultNum/childNum/infantNum` 一致；多人须用「成人：」「儿童：」分行，或无标签时每行一位（姓名+性别+日期+护照）。
+- **严禁**：搜索完成后用对话历史中的乘客信息自行调用 `parse-passengers`。
 - 每次搜索成功后旧乘客缓存（`passengers.json`）会自动清除，若发现文件不存在，这是预期行为，不得用历史信息重建。
 
 ---

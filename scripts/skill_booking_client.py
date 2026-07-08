@@ -42,12 +42,30 @@ from output_export import (  # noqa: E402
     wrap_config_required,
     wrap_envelope,
 )
+from passenger_count import validate_passengers_match_search  # noqa: E402
 from passenger_display import build_contact_display, build_passenger_display, format_display_message  # noqa: E402
 from pax_info_parser import parse_passengers_and_contact  # noqa: E402
 
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _search_payload_for_validation() -> dict | None:
+    ctx_path = BOOKING_CONTEXT_FILE
+    if ctx_path.is_file():
+        payload = _load_json(ctx_path).get("searchPayload")
+        if isinstance(payload, dict) and payload:
+            return payload
+    if PENDING_PAYLOAD_FILE.is_file():
+        payload = _load_json(PENDING_PAYLOAD_FILE)
+        if isinstance(payload, dict) and payload:
+            return payload
+    return None
+
+
+def _validate_pax_count(passengers: list[dict]) -> str | None:
+    return validate_passengers_match_search(passengers, _search_payload_for_validation())
 
 
 def _save_json(path: Path, data: dict) -> None:
@@ -70,6 +88,14 @@ def cmd_parse_passengers(text: str) -> dict:
         )
     if not contact:
         return failure_envelope("parse-passengers", "请补充联系人：姓名、手机、邮箱")
+
+    count_err = _validate_pax_count(passengers)
+    if count_err:
+        return failure_envelope(
+            "parse-passengers",
+            count_err,
+            agent_only={"error": count_err, "passengerCountMismatch": True},
+        )
 
     p_disp = build_passenger_display(passengers, raw_mappings=raw_mappings)
     c_disp = build_contact_display(contact, raw=contact_raw)
@@ -125,6 +151,14 @@ def cmd_verify(args: argparse.Namespace) -> dict:
             agent_only={"detail": "passengers.json 缺少 passengers 或 agentContact"},
         )
 
+    count_err = _validate_pax_count(passengers)
+    if count_err:
+        return failure_envelope(
+            "verify",
+            count_err,
+            agent_only={"error": count_err, "passengerCountMismatch": True},
+        )
+
     offer_id = args.offer_id or (ctx.get("selectedOffer") or {}).get("offerId")
     if not offer_id:
         return failure_envelope(
@@ -177,6 +211,14 @@ def cmd_order(args: argparse.Namespace) -> dict:
             "order",
             "请先完成乘客信息核对（parse-passengers）。",
             agent_only={"detail": "缺少 passengers 或 agentContact"},
+        )
+
+    count_err = _validate_pax_count(passengers)
+    if count_err:
+        return failure_envelope(
+            "order",
+            count_err,
+            agent_only={"error": count_err, "passengerCountMismatch": True},
         )
 
     ctx_path = Path(args.context_file)

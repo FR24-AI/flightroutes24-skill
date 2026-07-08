@@ -5,20 +5,37 @@ import re
 
 DEFAULT = {"adultNum": 1, "childNum": 0, "infantNum": 0}
 
+_CN_DIGIT = {
+    "零": 0,
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+}
+
 
 def parse_passengers(text: str | None) -> dict[str, int]:
     if not text:
         return dict(DEFAULT)
     s = text.replace(" ", "")
     adult = (
-        _first_int(r"(\d+)\s*个?\s*成人|(\d+)\s*大|(\d+)\s*adt", s)
+        _first_int(r"(\d+)\s*[位个]?\s*成人|(\d+)\s*[位个]?\s*大|(\d+)\s*adt", s)
         or _from_cn_num(s, "大", "成人", "大人", "adult")
     )
     child = (
-        _first_int(r"(\d+)\s*小|(\d+)\s*儿童|(\d+)\s*chd", s)
+        _first_int(r"(\d+)\s*[位个]?\s*小|(\d+)\s*[位个]?\s*儿童|(\d+)\s*chd", s)
         or _from_cn_num(s, "小", "儿童", "小孩", "child")
     )
-    infant = _first_int(r"(\d+)\s*婴|(\d+)\s*婴儿|(\d+)\s*inf", s) or _from_cn_num(s, "婴儿", "infant")
+    infant = (
+        _first_int(r"(\d+)\s*[位个]?\s*婴|(\d+)\s*[位个]?\s*婴儿|(\d+)\s*inf", s)
+        or _from_cn_num(s, "婴儿", "infant")
+    )
     if adult is None and child is None and infant is None:
         return dict(DEFAULT)
     return {
@@ -53,16 +70,30 @@ def _first_int(pattern: str, s: str) -> int | None:
 
 def _from_cn_num(s: str, *keywords: str) -> int | None:
     for kw in keywords:
-        m = re.search(rf"([一二两三四五六七八九十\d]+)\s*{kw}", s, re.I)
+        m = re.search(rf"([一二两三四五六七八九十\d]+)\s*[位个]?\s*{kw}", s, re.I)
         if m:
             return _cn_to_int(m.group(1))
     return None
 
 
 def _cn_to_int(token: str) -> int | None:
+    token = (token or "").strip()
+    if not token:
+        return None
     if token.isdigit():
         return int(token)
-    mapping = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
-    if token in mapping:
-        return mapping[token]
+    if token in _CN_DIGIT:
+        return _CN_DIGIT[token]
+    if token == "十":
+        return 10
+    if "十" in token:
+        left, _, right = token.partition("十")
+        tens = _CN_DIGIT.get(left, 1 if left == "" else None)
+        if tens is None and left:
+            return None
+        tens = tens if left else 1
+        ones = _CN_DIGIT.get(right, 0) if right else 0
+        if right and right not in _CN_DIGIT:
+            return None
+        return tens * 10 + ones
     return None

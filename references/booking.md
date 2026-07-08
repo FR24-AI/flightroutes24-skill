@@ -44,9 +44,16 @@ python scripts/skill_booking_client.py order --user-confirmed
 
 ## 乘客信息示例（对用户说明时可引用）
 
-**中文示例：**
+**中文示例（1 位）：**
 ```
 乘客：张三，男，1990-01-15，护照 E12345678，2030-12-31 到期，国籍 CN。
+联系人：张三，手机 13800138000，邮箱 zhangsan@example.com
+```
+
+**中文示例（2 位成人）：**
+```
+成人：张三，男，1990-01-15，护照 E11111111，2030-12-31 到期，国籍 CN。
+成人：李四，男，1991-02-20，护照 E22222222，2031-06-30 到期，国籍 CN。
 联系人：张三，手机 13800138000，邮箱 zhangsan@example.com
 ```
 
@@ -56,7 +63,7 @@ Passenger: John Doe, Male, 1990-01-15, Passport A12345678, expires 2030-12-31, n
 Contact: John Doe, phone +1-555-0100, email john@example.com
 ```
 
-`parse-passengers` 成功后，向用户展示 `passengerDisplay` 中的姓名拼音、证件等字段对照，待用户确认后再校验。
+`parse-passengers` 会校验证件人数是否与搜索时的成人/儿童/婴儿人数一致；不一致将拒绝并提示补全。成功后展示 `passengerDisplay` 字段对照，待用户确认后再校验。
 
 ## 确认短语 / Confirm Phrases
 
