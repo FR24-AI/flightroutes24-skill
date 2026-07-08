@@ -28,6 +28,8 @@ EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
 GRAY_HEADER = "ww"
 
 SHOPPING_V2_PATH = "/ai/shopping/v2"
+PLACE_RESOLVE_PATH = "/ai/place/resolve"
+PLACE_RESOLVE_BATCH_PATH = "/ai/place/resolve/batch"
 PRICING_PATH = "/api/new/pricing"
 BOOKING_PATH = "/api/new/booking"
 

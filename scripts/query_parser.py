@@ -8,7 +8,7 @@ from typing import Any
 
 from date_parser import parse_date
 from passenger_parser import DEFAULT, parse_passengers, validate_passengers
-from place_resolver import resolve_place_required
+from place_resolver import resolve_place_detail, resolve_place_required
 from search_refinement import (  # noqa: E402
     describe_preferences,
     parse_carriers_from_text,
@@ -76,26 +76,22 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
 
     legs = []
     for i, leg in enumerate(legs_in):
-        origin, err = resolve_place_required(
-            leg.get("originCode") or leg.get("originText") or leg.get("origin") or "",
-            "出发地",
-        )
-        if err:
-            return None, None, err
-        dest, err = resolve_place_required(
-            leg.get("destinationCode") or leg.get("destinationText") or leg.get("destination") or "",
-            "目的地",
-        )
-        if err:
-            return None, None, err
+        origin_text = leg.get("originCode") or leg.get("originText") or leg.get("origin") or ""
+        dest_text = leg.get("destinationCode") or leg.get("destinationText") or leg.get("destination") or ""
+        origin_detail = resolve_place_detail(origin_text)
+        if not origin_detail or not origin_detail.get("code"):
+            return None, None, f"无法识别出发地：{origin_text}，请使用 IATA 三字码或常见城市名"
+        dest_detail = resolve_place_detail(dest_text)
+        if not dest_detail or not dest_detail.get("code"):
+            return None, None, f"无法识别目的地：{dest_text}，请使用 IATA 三字码或常见城市名"
         dep, err = parse_date(leg.get("depDateText") or leg.get("depDate") or "")
         if err:
             return None, None, err
-        type_o = leg.get("typeO") or "airportcode"
-        type_d = leg.get("typeD") or "airportgroup"
+        type_o = leg.get("typeO") or ("airportcode" if origin_detail.get("codeType") == "A" else "airportgroup")
+        type_d = leg.get("typeD") or ("airportcode" if dest_detail.get("codeType") == "A" else "airportgroup")
         item = {
-            "origin": origin,
-            "destination": dest,
+            "origin": origin_detail["code"],
+            "destination": dest_detail["code"],
             "depDate": dep,
             "typeO": type_o,
             "typeD": type_d,
