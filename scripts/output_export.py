@@ -93,6 +93,9 @@ _USER_OFFER_KEYS = frozenset(
         "baggage",
         "flightCategory",
         "flightCategoryLabel",
+        "returnSegments",
+        "returnRoute",
+        "returnBaggage",
     }
 )
 
@@ -165,11 +168,20 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         for i, opt in enumerate(direct_options, start=1):
             segs = opt.get("segments") or []
             dep_time = segs[0].get("depTime", "")[:5] if segs else ""
-            lines.append(
-                f"  {i}. {opt.get('flights', '')} {dep_time}"
-                f" {opt.get('totalPrice')} {opt.get('currency', 'CNY')}/pax"
+            ret_segs = opt.get("returnSegments") or []
+            ret_dep_time = ret_segs[0].get("depTime", "")[:5] if ret_segs else ""
+            ret_route = opt.get("returnRoute") or ""
+            line = (
+                f"  {i}. 去 {opt.get('flights', '')} {dep_time} {opt.get('route', '')}"
+                f"  返 {ret_route} {ret_dep_time}"
+                if ret_segs
+                else f"  {i}. {opt.get('flights', '')} {dep_time} {opt.get('route', '')}"
+            )
+            line += (
+                f"  {opt.get('totalPrice')} {opt.get('currency', 'CNY')}/pax"
                 f"  报价ID/QuoteID: {opt.get('quoteId', '')}"
             )
+            lines.append(line)
     else:
         offer = user_view.get("directLowest")
         if offer:

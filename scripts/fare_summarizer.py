@@ -82,6 +82,21 @@ def _outbound_segment_ids(offer: dict[str, Any], leg_map: dict[str, dict[str, An
     return [raw]
 
 
+def _return_segment_ids(offer: dict[str, Any], leg_map: dict[str, dict[str, Any]]) -> list[str]:
+    """取往返程回程段 ID 列表（leg.segmentIds[1]）。单程/中转返回空列表。"""
+    leg_id = offer.get("legId")
+    leg = leg_map.get(leg_id or "")
+    if not leg:
+        return []
+    raw_ids = leg.get("segmentIds") or []
+    if len(raw_ids) < 2:
+        return []
+    raw = raw_ids[1]
+    if "^" in raw:
+        return [x for x in raw.split("^") if x]
+    return [raw]
+
+
 def _format_rule_line(action: str, policy: str | None, fee: Any, text: str | None) -> str:
     if text:
         return text
@@ -172,21 +187,21 @@ def _build_baggage_lines(
     return lines
 
 
-def _build_offer_summary(
+def _build_segment_list(
     offer: dict[str, Any],
     segment_ids: list[str],
     seg_map: dict[str, dict[str, Any]],
-    category: str,
-    category_label: str,
-    price: float,
-) -> dict[str, Any]:
+    cabin_offset: int = 0,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """构建航段摘要列表，返回 (segments, flight_parts)。cabin_offset 用于往返程回程取正确索引。"""
     segments_out: list[dict[str, Any]] = []
     flight_parts: list[str] = []
     cabins = offer.get("cabin") or []
     for i, seg_id in enumerate(segment_ids, start=1):
         seg = seg_map.get(seg_id) or {}
         fn = _format_flight_no(seg.get("carrier"), seg.get("flightNo"))
-        cabin = cabins[i - 1] if len(cabins) >= i else (cabins[0] if cabins else None)
+        cabin_idx = cabin_offset + i - 1
+        cabin = cabins[cabin_idx] if len(cabins) > cabin_idx else (cabins[0] if cabins else None)
         segments_out.append(
             {
                 "index": i,
@@ -200,10 +215,24 @@ def _build_offer_summary(
             }
         )
         flight_parts.append(fn)
-    route = ""
-    if segments_out:
-        route = f"{segments_out[0]['depAirport']} → {segments_out[-1]['arrAirport']}"
-    return {
+    return segments_out, flight_parts
+
+
+def _build_offer_summary(
+    offer: dict[str, Any],
+    segment_ids: list[str],
+    seg_map: dict[str, dict[str, Any]],
+    category: str,
+    category_label: str,
+    price: float,
+    *,
+    return_seg_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    # 去程航段
+    segments_out, flight_parts = _build_segment_list(offer, segment_ids, seg_map, cabin_offset=0)
+    route = f"{segments_out[0]['depAirport']} → {segments_out[-1]['arrAirport']}" if segments_out else ""
+
+    result: dict[str, Any] = {
         "offerId": str(offer["offerId"]) if offer.get("offerId") is not None else None,
         "flightCategory": category,
         "flightCategoryLabel": category_label,
@@ -216,6 +245,19 @@ def _build_offer_summary(
         "refundChange": _build_refund_change(offer.get("rules")),
         "baggage": _build_baggage_lines(offer, segment_ids, seg_map),
     }
+
+    # 回程航段（往返程时存在）
+    if return_seg_ids:
+        ret_segs, ret_flight_parts = _build_segment_list(
+            offer, return_seg_ids, seg_map, cabin_offset=len(segment_ids)
+        )
+        result["returnSegments"] = ret_segs
+        result["returnRoute"] = (
+            f"{ret_segs[0]['depAirport']} → {ret_segs[-1]['arrAirport']}" if ret_segs else ""
+        )
+        result["returnBaggage"] = _build_baggage_lines(offer, return_seg_ids, seg_map)
+
+    return result
 
 
 def _clock_minutes(dep_time: str | None) -> int | None:
@@ -334,7 +376,11 @@ def _summarize_from_data_v2(
             flight_no_key = _format_flight_no(first_seg.get("carrier"), first_seg.get("flightNo"))
             existing = direct_by_flight.get(flight_no_key)
             if existing is None or price < existing[0]:
-                summary = _build_offer_summary(offer, seg_ids, seg_map, "direct", "直飞", price)
+                ret_ids = _return_segment_ids(offer, leg_map)
+                summary = _build_offer_summary(
+                    offer, seg_ids, seg_map, "direct", "直飞", price,
+                    return_seg_ids=ret_ids or None,
+                )
                 direct_by_flight[flight_no_key] = (price, summary)
         else:
             transfer_count += 1
@@ -342,7 +388,11 @@ def _summarize_from_data_v2(
                 continue
             if transfer_price is None or price < transfer_price:
                 transfer_price = price
-                transfer_best = _build_offer_summary(offer, seg_ids, seg_map, "transfer", "中转", price)
+                ret_ids = _return_segment_ids(offer, leg_map)
+                transfer_best = _build_offer_summary(
+                    offer, seg_ids, seg_map, "transfer", "中转", price,
+                    return_seg_ids=ret_ids or None,
+                )
 
     direct_options = [
         s for _, s in sorted(direct_by_flight.values(), key=lambda x: x[0])

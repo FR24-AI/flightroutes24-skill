@@ -57,7 +57,7 @@ def _is_success(code: str) -> bool:
 def _offer_block(label: str, offer: dict | None) -> dict[str, Any] | None:
     if not offer:
         return None
-    return {
+    block: dict[str, Any] = {
         "label": label,
         "offerId": str(offer["offerId"]) if offer.get("offerId") is not None else None,
         "route": offer.get("route"),
@@ -69,6 +69,14 @@ def _offer_block(label: str, offer: dict | None) -> dict[str, Any] | None:
         "refundChange": offer.get("refundChange"),
         "baggage": offer.get("baggage"),
     }
+    # 往返程回程字段透传
+    if offer.get("returnSegments"):
+        block["returnSegments"] = offer["returnSegments"]
+    if offer.get("returnRoute"):
+        block["returnRoute"] = offer["returnRoute"]
+    if offer.get("returnBaggage"):
+        block["returnBaggage"] = offer["returnBaggage"]
+    return block
 
 
 def _normalize_newapi_raw_v2(raw: dict, *, filters: dict[str, Any] | None = None) -> dict:

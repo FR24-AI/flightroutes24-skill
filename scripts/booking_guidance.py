@@ -324,7 +324,7 @@ def build_itinerary_preview(
     """合并搜索摘要与校验报价，供用户最终确认。"""
     base = selected_offer or {}
     verify = verify_offer or {}
-    return {
+    preview: dict[str, Any] = {
         "route": base.get("route") or verify.get("route"),
         "flights": base.get("flights"),
         "segments": base.get("segments") or [],
@@ -335,6 +335,14 @@ def build_itinerary_preview(
         "platingCarrier": base.get("platingCarrier") or verify.get("platingCarrier"),
         "flightCategoryLabel": base.get("label") or base.get("flightCategoryLabel"),
     }
+    # 往返程回程字段透传
+    if base.get("returnSegments"):
+        preview["returnSegments"] = base["returnSegments"]
+    if base.get("returnRoute"):
+        preview["returnRoute"] = base["returnRoute"]
+    if base.get("returnBaggage"):
+        preview["returnBaggage"] = base["returnBaggage"]
+    return preview
 
 
 def _rules_brief(rules: dict | None) -> dict[str, str]:
