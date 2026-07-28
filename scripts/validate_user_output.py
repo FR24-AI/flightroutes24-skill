@@ -22,7 +22,6 @@ _USER_FORBIDDEN = (
     "SKIP_IP_WHITELIST",
     "setup-maintainer",
     "skill.local.env",
-    "flight-deve",
     "fr24-skip",
     "张三",
     "王明",

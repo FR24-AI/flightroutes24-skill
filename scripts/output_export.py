@@ -18,7 +18,6 @@ _USER_TEXT_BLOCKLIST = (
     "SKIP_AUTH",
     "SKIP_IP_WHITELIST",
     "fr24-skip",
-    "flight-deve",
     "skill.local.env",
     "FR_SKILL_GRAY_HEADER",
     "FR_SKILL_EXPORT_BASE_URL",

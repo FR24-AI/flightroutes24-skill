@@ -7,7 +7,7 @@
 在 `config.py` 中修改：
 
 ```python
-EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
+EXPORT_BASE_URL = "https://flight.flightroutes24.com"
 GRAY_HEADER = "ww"
 ```
 

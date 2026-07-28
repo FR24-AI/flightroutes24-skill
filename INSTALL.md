@@ -94,8 +94,8 @@ fr24-ai/
 
 export 根地址与灰度头在 **`config.py`** 中固定：
 
-- `EXPORT_BASE_URL`（默认 `https://flight-deve.flightroutes24.com`）
-- `GRAY_HEADER`（deve 默认 `ww`）
+- `EXPORT_BASE_URL`（默认 `https://flight.flightroutes24.com`）
+- `GRAY_HEADER`（默认 `ww`）
 
 切换测试/生产环境时由维护者直接修改该文件，**无需** `skill.local.env`。
 
