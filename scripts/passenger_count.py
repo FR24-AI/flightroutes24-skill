@@ -35,15 +35,24 @@ def validate_passengers_match_search(
         return "未识别到乘客信息"
     expected = expected_passengers_from_search(search_payload)
     actual = count_passengers_by_type(passengers)
+    type_labels = (("adultNum", "成人"), ("childNum", "儿童"), ("infantNum", "婴儿"))
     mismatches: list[str] = []
-    labels = (("adultNum", "成人"), ("childNum", "儿童"), ("infantNum", "婴儿"))
-    for key, label in labels:
+    for key, label in type_labels:
         if actual[key] != expected[key]:
-            mismatches.append(f"{label}{expected[key]}人（实际解析{actual[key]}人）")
+            mismatches.append(f"{label}：搜索 {expected[key]} 人，实际填写 {actual[key]} 人")
     if not mismatches:
         return None
+
+    expected_parts = []
+    for key, label in type_labels:
+        if expected[key] > 0:
+            expected_parts.append(f"{label} {expected[key]} 人")
+    expected_desc = "、".join(expected_parts) if expected_parts else "成人 1 人"
+
     return (
-        "乘客人数与搜索不一致："
-        + "、".join(mismatches)
-        + "。请按搜索人数补全每位乘客信息（建议用「成人：」「儿童：」分行标注）。"
+        "乘客人数与搜索不符：\n"
+        + "\n".join(f"  · {m}" for m in mismatches)
+        + f"\n\n本次搜索为 {expected_desc}，请按以下方式处理：\n"
+        + f"  · 仍预订 {expected_desc}：请重新提供对应人数的乘客证件信息。\n"
+        + "  · 需要更改人数：请先说「重新搜索」并指定新的人数，再提供乘客信息。"
     )
