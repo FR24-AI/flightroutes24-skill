@@ -124,7 +124,7 @@ def build_payload_from_intent(intent: dict[str, Any]) -> tuple[dict | None, str 
     gds_segments = parse_gds_segments(gds_text) if gds_text else []
     gds_cabin = gds_segments[0]["cabin"] if gds_segments else None
 
-    cabin_raw = str(prefs.get("cabin") or intent.get("cabinText") or "Y").strip()
+    cabin_raw = str(prefs.get("cabin") or intent.get("cabin") or intent.get("cabinText") or "Y").strip()
     explicit_cabin = _extract_explicit_cabin(cabin_raw)
     if gds_cabin:
         cabin = gds_cabin

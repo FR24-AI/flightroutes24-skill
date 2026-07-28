@@ -150,6 +150,13 @@ def _refund_baggage_lines(offer: dict[str, Any] | None) -> list[str]:
     return lines
 
 
+def _hhmm(iso: str | None) -> str:
+    """从 ISO 时间字符串中提取 HH:MM，兼容 '2026-09-20T14:42' 和 '14:42' 两种格式。"""
+    if not iso:
+        return ""
+    return (iso.split("T")[-1] if "T" in iso else iso)[:5]
+
+
 def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -> str:
     lines: list[str] = []
     if demo:
@@ -167,9 +174,9 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         lines.append(f"【直飞报价 共{len(direct_options)}条 / Direct flights ({len(direct_options)})】")
         for i, opt in enumerate(direct_options, start=1):
             segs = opt.get("segments") or []
-            dep_time = segs[0].get("depTime", "")[:5] if segs else ""
+            dep_time = _hhmm(segs[0].get("depTime")) if segs else ""
             ret_segs = opt.get("returnSegments") or []
-            ret_dep_time = ret_segs[0].get("depTime", "")[:5] if ret_segs else ""
+            ret_dep_time = _hhmm(ret_segs[0].get("depTime")) if ret_segs else ""
             ret_route = opt.get("returnRoute") or ""
             line = (
                 f"  {i}. 去 {opt.get('flights', '')} {dep_time} {opt.get('route', '')}"

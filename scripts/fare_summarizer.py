@@ -373,10 +373,17 @@ def _summarize_from_data_v2(
             if price is None:
                 continue
             first_seg = seg_map.get(seg_ids[0]) or {}
-            flight_no_key = _format_flight_no(first_seg.get("carrier"), first_seg.get("flightNo"))
+            out_fn = _format_flight_no(first_seg.get("carrier"), first_seg.get("flightNo"))
+            ret_ids = _return_segment_ids(offer, leg_map)
+            # 往返程：去程+回程航班号组合作为去重 key，保留不同回程的最低价
+            if ret_ids:
+                ret_first_seg = seg_map.get(ret_ids[0]) or {}
+                ret_fn = _format_flight_no(ret_first_seg.get("carrier"), ret_first_seg.get("flightNo"))
+                flight_no_key = f"{out_fn}+{ret_fn}"
+            else:
+                flight_no_key = out_fn
             existing = direct_by_flight.get(flight_no_key)
             if existing is None or price < existing[0]:
-                ret_ids = _return_segment_ids(offer, leg_map)
                 summary = _build_offer_summary(
                     offer, seg_ids, seg_map, "direct", "直飞", price,
                     return_seg_ids=ret_ids or None,
