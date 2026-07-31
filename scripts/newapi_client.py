@@ -16,6 +16,9 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+import hashlib
+import time
+
 from config import (  # noqa: E402
     CACHE_DIR,
     CLIENT_KEY_FILE,
@@ -30,6 +33,16 @@ from config import (  # noqa: E402
     SHOPPING_V2_PATH,
     is_newapi_configured,
 )
+
+
+def _sha512_sign(app_key: str, app_secret: str, timestamp: str) -> str:
+    raw = f"{app_key}{app_secret}{timestamp}"
+    return hashlib.sha512(raw.encode("utf-8")).hexdigest()
+
+
+def _build_authentication(app_key: str, app_secret: str) -> dict[str, str]:
+    ts = str(int(time.time()))
+    return {"timestamp": ts, "sign": _sha512_sign(app_key, app_secret, ts)}
 
 BJ = ZoneInfo("Asia/Shanghai")
 SUCCESS_CODES = frozenset({"0", "000000"})
@@ -115,8 +128,7 @@ def _require_newapi_secrets() -> str | None:
 def _attach_auth(body: dict[str, Any]) -> dict[str, Any]:
     payload = dict(body)
     if not NEWAPI_SKIP_AUTH:
-        from newapi_auth import build_authentication  # noqa: E402
-        payload["authentication"] = build_authentication(NEWAPI_APP_KEY, NEWAPI_SIGN_SECRET)
+        payload["authentication"] = _build_authentication(NEWAPI_APP_KEY, NEWAPI_SIGN_SECRET)
     return payload
 
 
