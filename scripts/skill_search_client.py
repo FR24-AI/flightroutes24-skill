@@ -19,7 +19,6 @@ from config import (  # noqa: E402
     CLIENT_KEY_FILE,
     CLIENT_KEY_HEADER,
     GRAY_HEADER,
-    PASSENGERS_FILE,
     PENDING_PAYLOAD_FILE,
     SKILL_ID,
 )
@@ -70,8 +69,6 @@ def _write_booking_context(
     else:
         ctx["selection"] = None
     save_booking_context(ctx)
-    if PASSENGERS_FILE.exists():
-        PASSENGERS_FILE.unlink()
 
 
 def search_v2(payload: dict, *, selection: str = "none") -> dict:

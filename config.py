@@ -1,4 +1,4 @@
-"""Skill 配置（Skill 搜索 + NewApi 预订）。"""
+"""Skill 配置（Skill 搜索）。"""
 from __future__ import annotations
 
 import json
@@ -10,7 +10,6 @@ CACHE_DIR = SKILL_DIR / ".cache"
 CLIENT_KEY_FILE = CACHE_DIR / "skill_client.json"
 PENDING_PAYLOAD_FILE = CACHE_DIR / "pending_search.json"
 BOOKING_CONTEXT_FILE = CACHE_DIR / "booking_context.json"
-PASSENGERS_FILE = CACHE_DIR / "passengers.json"
 KEYS_FILE = CACHE_DIR / "keys.json"
 ENV_FILE = SKILL_DIR / ".env"
 
@@ -30,8 +29,6 @@ GRAY_HEADER = "ww"
 SHOPPING_V2_PATH = "/ai/shopping/v2"
 PLACE_RESOLVE_PATH = "/ai/place/resolve"
 PLACE_RESOLVE_BATCH_PATH = "/ai/place/resolve/batch"
-PRICING_PATH = "/api/new/pricing"
-BOOKING_PATH = "/api/new/booking"
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +38,6 @@ BOOKING_PATH = "/api/new/booking"
 _ENV_TO_JSON_KEYS = {
     "FR_NEWAPI_APPKEY": "appkey",
     "FR_NEWAPI_SIGN_SECRET": "signSecret",
-    "FR_NEWAPI_AES_SECRET": "aesSecret",
     "FR_NEWAPI_SKIP_AUTH": "skipAuth",
     "FR_NEWAPI_SKIP_IP_WHITELIST": "skipIpWhitelist",
 }
@@ -121,34 +117,17 @@ def reload_config() -> None:
 # NewApi 采购密钥（支持多源读取，勿写入仓库）
 NEWAPI_APP_KEY = _read_config("FR_NEWAPI_APPKEY")
 NEWAPI_SIGN_SECRET = _read_config("FR_NEWAPI_SIGN_SECRET")
-NEWAPI_AES_SECRET = _read_config("FR_NEWAPI_AES_SECRET")
 NEWAPI_SKIP_AUTH = _read_config_bool("FR_NEWAPI_SKIP_AUTH")
 NEWAPI_SKIP_IP_WHITELIST = _read_config_bool("FR_NEWAPI_SKIP_IP_WHITELIST")
 FR24_API_HEADER = "fr24-api"
 
 REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"
 
-USER_BOOKING_USER_MESSAGE = (
-    f"搜索和预订均需配置采购密钥。请打开 {REGISTER_PORTAL_URL} 注册并开通 API 采购，"
-    f"由管理员在本机配置采购密钥后，再按预订流程提供乘客信息。"
-)
+CONTACT_PHONE = "181xxxx888"
 
-USER_BOOKING_USER_MESSAGE_EN = (
-    f"Search and booking both require procurement keys. Please register at {REGISTER_PORTAL_URL} "
-    f"and activate API procurement, then configure your keys locally and restart the agent. "
-    f"Ask 'how to configure appkey' for setup instructions."
-)
+CONTACT_MESSAGE = f"如需预订，请联系我们的工作人员：{CONTACT_PHONE}"
 
-USER_BOOKING_AGENT_HINT = (
-    "维护者：配置 FR_NEWAPI_APPKEY、FR_NEWAPI_SIGN_SECRET、FR_NEWAPI_AES_SECRET；"
-    "联调见 references/setup-maintainer.md（勿展示给用户）。"
-)
-
-BOOKING_CONFIG_HINT = USER_BOOKING_AGENT_HINT
-
-SEARCH_ONLY_HINT = "（仅查价）当前未开通采购预订；注册并配置密钥后可继续预订。"
-
-SEARCH_ONLY_HINT_EN = "(Search only) Booking is not enabled. Register at Flightroutes24 and configure keys to proceed."
+CONTACT_MESSAGE_EN = f"To place a booking, please contact our staff: {CONTACT_PHONE}"
 
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE = (
     f"搜索失败，请确认采购密钥已正确配置。"
@@ -170,32 +149,3 @@ def is_newapi_configured() -> bool:
     if NEWAPI_SKIP_AUTH:
         return True
     return bool(NEWAPI_SIGN_SECRET)
-
-
-def is_booking_ready() -> bool:
-    if not is_newapi_configured():
-        return False
-    return bool(NEWAPI_AES_SECRET)
-
-
-def booking_required_payload(step: str = "booking") -> dict:
-    return {
-        "code": "CONFIG_REQUIRED",
-        "success": False,
-        "step": step,
-        "registerPortalUrl": REGISTER_PORTAL_URL,
-        "message": USER_BOOKING_USER_MESSAGE,
-        "bookingConfigHint": USER_BOOKING_AGENT_HINT,
-    }
-
-
-def booking_config_required_envelope(action: str, step: str = "booking") -> dict:
-    """未配置采购密钥时，统一返回注册/申请引导（含 registerPortalUrl）。"""
-    data = booking_required_payload(step=step)
-    return {
-        "skill": SKILL_ID,
-        "status": "failure",
-        "action": action,
-        "data": data,
-        "message": data["message"],
-    }

@@ -9,7 +9,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from config import SKILL_ID  # noqa: E402
+from config import CONTACT_MESSAGE, CONTACT_MESSAGE_EN, SKILL_ID  # noqa: E402
 
 # 不得出现在 userView / message（用户可见）中的片段
 _USER_TEXT_BLOCKLIST = (
@@ -53,30 +53,7 @@ _SEARCH_AGENT_KEYS = frozenset(
         "traceId",
         "processingTime",
         "searchMode",
-        "bookingEnabled",
-        "bookingReady",
-        "workflowSteps",
-        "bookingConfigHint",
         "registerPortalUrl",
-        "bookingChoices",
-    }
-)
-
-# bookingConfigHint 仅存在于 agentOnly，且不得进入 userView / message
-
-_VERIFY_AGENT_KEYS = frozenset(
-    {
-        "code",
-        "traceId",
-        "processingTime",
-        "workflowStep",
-        "verifyOfferId",
-        "passengers",
-        "agentContact",
-        "passengerRawMappings",
-        "contactRaw",
-        "apiMessage",
-        "nextSteps",
     }
 )
 
@@ -110,26 +87,6 @@ def user_offer(offer: dict[str, Any] | None) -> dict[str, Any] | None:
     out = _pick_keys(offer, _USER_OFFER_KEYS)
     if out and offer.get("offerId"):
         out["quoteId"] = offer["offerId"]
-    return out
-
-
-def user_booking_choices(choices: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    """用户可选直飞/中转，含 quoteId 以便 Agent 准确对应。"""
-    out: list[dict[str, Any]] = []
-    for c in choices or []:
-        if not isinstance(c, dict):
-            continue
-        item = {
-            "key": c.get("key"),
-            "label": c.get("label"),
-            "route": c.get("route"),
-            "flights": c.get("flights"),
-            "totalPrice": c.get("totalPrice"),
-            "currency": c.get("currency"),
-        }
-        if c.get("offerId"):
-            item["quoteId"] = c["offerId"]
-        out.append(item)
     return out
 
 
@@ -212,6 +169,9 @@ def build_search_user_message(user_view: dict[str, Any], *, demo: bool = True) -
         if quote_id:
             lines.append(f"报价ID / Quote ID: {quote_id}")
 
+    if lines:
+        lines.append(CONTACT_MESSAGE)
+
     return "\n".join(lines) if lines else user_view.get("message") or ""
 
 
@@ -224,8 +184,8 @@ def search_user_view(internal: dict[str, Any]) -> dict[str, Any]:
         "transferLowest": user_offer(internal.get("transferLowest")),
         "remainingQuota": internal.get("remainingQuota"),
         "dailyLimit": internal.get("dailyLimit"),
-        "selectionRequired": internal.get("selectionRequired"),
-        "bookingChoices": user_booking_choices(internal.get("bookingChoices")),
+        "contactMessage": CONTACT_MESSAGE,
+        "contactMessageEn": CONTACT_MESSAGE_EN,
     }
     if not internal.get("success"):
         user["message"] = internal.get("message") or "搜索未成功"
@@ -241,7 +201,6 @@ def search_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
     agent["directOptions"] = internal.get("directOptions") or []
     agent["directLowest"] = internal.get("directLowest")
     agent["transferLowest"] = internal.get("transferLowest")
-    agent["selectionRequired"] = internal.get("selectionRequired")
     return agent
 
 
@@ -288,83 +247,6 @@ def parse_user_view(intent_summary: str, payload: dict[str, Any]) -> dict[str, A
     return view
 
 
-def verify_user_view(internal: dict[str, Any]) -> dict[str, Any]:
-    user: dict[str, Any] = {
-        "success": internal.get("success"),
-        "totalPrice": internal.get("totalPrice"),
-        "currency": internal.get("currency"),
-        "passengerDisplay": internal.get("passengerDisplay"),
-        "contactDisplay": internal.get("contactDisplay"),
-        "orderPreview": internal.get("orderPreview"),
-        "orderConfirmPrompt": internal.get("orderConfirmPrompt"),
-        "orderConfirmPromptEn": internal.get("orderConfirmPromptEn"),
-        "confirmPhraseEn": internal.get("confirmPhraseEn"),
-        "requiresOrderConfirmation": internal.get("requiresOrderConfirmation"),
-        "requiresResearch": internal.get("requiresResearch"),
-    }
-    if internal.get("verifyOfferId"):
-        user["quoteId"] = internal["verifyOfferId"]
-    if internal.get("success"):
-        user["message"] = internal.get("orderConfirmPrompt") or internal.get("message", "")
-    else:
-        user["message"] = (
-            internal.get("userHint") or internal.get("message") or "校验未成功"
-        )
-    return user
-
-
-def verify_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
-    return {k: internal[k] for k in _VERIFY_AGENT_KEYS if k in internal}
-
-
-def passengers_user_view(internal: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "success": internal.get("success", True),
-        "passengerDisplay": internal.get("passengerDisplay"),
-        "contactDisplay": internal.get("contactDisplay"),
-        "displayMessage": internal.get("display_message") or internal.get("message"),
-        "confirmPhrase": internal.get("confirmPhrase"),
-        "confirmPhraseEn": internal.get("confirmPhraseEn"),
-        "passengerConfirmPrompt": internal.get("passengerConfirmPrompt"),
-        "passengerConfirmPromptEn": internal.get("passengerConfirmPromptEn"),
-        "message": internal.get("message") or internal.get("display_message"),
-    }
-
-
-def passengers_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
-    return {
-        k: internal[k]
-        for k in (
-            "passengers",
-            "agentContact",
-            "passengerRawMappings",
-            "contactRaw",
-            "nextSteps",
-            "code",
-            "step",
-            "workflowStep",
-        )
-        if k in internal
-    }
-
-
-def order_user_view(internal: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "success": internal.get("success"),
-        "orderNo": internal.get("orderNo"),
-        "orderStatus": internal.get("orderStatus"),
-        "partnerOrderNo": internal.get("partnerOrderNo"),
-        "totalPrice": internal.get("totalPrice"),
-        "currency": internal.get("currency"),
-        "payDeadline": internal.get("payDeadline"),
-        "message": internal.get("message"),
-    }
-
-
-def order_agent_only(internal: dict[str, Any]) -> dict[str, Any]:
-    return {k: internal[k] for k in ("code",) if k in internal}
-
-
 def wrap_envelope(
     *,
     action: str,
@@ -380,8 +262,6 @@ def wrap_envelope(
         uv["message"] = sanitize_user_text(str(uv["message"]))
     if "displayMessage" in uv:
         uv["displayMessage"] = sanitize_user_text(str(uv["displayMessage"]))
-    if "passengerInfoPrompt" in uv:
-        uv["passengerInfoPrompt"] = sanitize_user_text(str(uv["passengerInfoPrompt"]))
     out: dict[str, Any] = {
         "skill": SKILL_ID,
         "status": status,
@@ -401,26 +281,4 @@ def failure_envelope(action: str, message: str, *, agent_only: dict[str, Any] | 
         user_view={"message": message},
         agent_only=agent_only,
         message=message,
-    )
-
-
-def wrap_config_required(action: str, envelope: dict[str, Any]) -> dict[str, Any]:
-    """将 booking_config_required 转为 userView + agentOnly。"""
-    data = envelope.get("data") or {}
-    user_view: dict[str, Any] = {
-        "message": sanitize_user_text(data.get("message") or envelope.get("message", "")),
-    }
-    if data.get("registerPortalUrl"):
-        user_view["registerPortalUrl"] = data["registerPortalUrl"]
-    agent_only = {
-        k: data[k]
-        for k in ("code", "step", "bookingConfigHint", "detail")
-        if k in data
-    }
-    return wrap_envelope(
-        action=action,
-        status="failure",
-        user_view=user_view,
-        agent_only=agent_only or None,
-        message=user_view["message"],
     )

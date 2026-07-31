@@ -1,4 +1,4 @@
-"""搜索/校验/生单结果格式化（Skill JSON 信封）。"""
+"""搜索结果格式化（Skill JSON 信封）。"""
 from __future__ import annotations
 
 import sys
@@ -10,42 +10,20 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from config import (  # noqa: E402
+    CONTACT_MESSAGE,
+    CONTACT_MESSAGE_EN,
     REGISTER_PORTAL_URL,
-    SEARCH_ONLY_HINT,
-    USER_BOOKING_AGENT_HINT,
-    USER_BOOKING_USER_MESSAGE,
     USER_SKILL_QUOTA_EXCEEDED_MESSAGE,
-    booking_required_payload,
-    is_booking_ready,
     is_newapi_configured,
-)
-from booking_guidance import (  # noqa: E402
-    BOOKING_SELECTION_USER_PROMPT,
-    BOOKING_WORKFLOW_STEPS,
-    ORDER_CONFIRM_PHRASE_EN,
-    ORDER_CONFIRM_USER_PROMPT,
-    ORDER_CONFIRM_USER_PROMPT_EN,
-    PASSENGER_INFO_EXAMPLES,
-    PASSENGER_INFO_USER_PROMPT,
-    build_booking_choices,
-    build_itinerary_preview,
-    is_verify_identity_mismatch,
-    selection_required,
-    verify_identity_mismatch_payload,
 )
 from fare_summarizer import summarize_response, _summarize_from_data_v2  # noqa: E402
 from search_refinement import describe_preferences, extract_search_filters  # noqa: E402
 from output_export import (  # noqa: E402
-    order_agent_only,
-    order_user_view,
     search_agent_only,
     search_user_view,
     user_offer,
-    verify_agent_only,
-    verify_user_view,
     wrap_envelope,
 )
-from passenger_display import build_contact_display, build_passenger_display  # noqa: E402
 
 SUCCESS_CODES = frozenset({"0", "000000"})
 
@@ -69,7 +47,6 @@ def _offer_block(label: str, offer: dict | None) -> dict[str, Any] | None:
         "refundChange": offer.get("refundChange"),
         "baggage": offer.get("baggage"),
     }
-    # 往返程回程字段透传
     if offer.get("returnSegments"):
         block["returnSegments"] = offer["returnSegments"]
     if offer.get("returnRoute"):
@@ -105,12 +82,6 @@ def format_search_data_v2(
         raw = _normalize_newapi_raw_v2(raw, filters=filters or None)
 
     code = str(raw.get("code", ""))
-    if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
-        return {
-            **booking_required_payload(step="search"),
-            "searchMode": search_mode,
-        }
-
     success = _is_success(code)
     summary = (
         summarize_response(raw, filters=filters or None)
@@ -121,9 +92,6 @@ def format_search_data_v2(
     direct_options: list[dict[str, Any]] = summary.get("directOptions") or []
     transfer = _offer_block("中转最低", summary.get("transferLowest"))
     direct_lowest = _offer_block("直飞最低", summary.get("directLowest"))
-    booking_enabled = is_newapi_configured()
-    booking_ready = is_booking_ready()
-    choices = build_booking_choices(direct_lowest, transfer) if success and booking_enabled else []
 
     lines: list[str] = []
     if success:
@@ -155,11 +123,7 @@ def format_search_data_v2(
                 f"【中转最低】{transfer['route']} {transfer['flights']} "
                 f"约 {transfer['totalPrice']} {transfer['currency']}/人"
             )
-        if booking_enabled and booking_ready:
-            lines.append(BOOKING_SELECTION_USER_PROMPT)
-        elif not booking_enabled:
-            lines.append(SEARCH_ONLY_HINT)
-            lines.append(USER_BOOKING_USER_MESSAGE)
+        lines.append(CONTACT_MESSAGE)
     else:
         if code == "307904":
             lines.append("搜索需要采购密钥，请先配置 FR_NEWAPI_APPKEY 与 FR_NEWAPI_SIGN_SECRET，再重试。详见「采购密钥」章节。")
@@ -174,19 +138,15 @@ def format_search_data_v2(
         "traceId": raw.get("traceId"),
         "processingTime": raw.get("processingTime"),
         "searchMode": search_mode,
-        "bookingEnabled": booking_enabled,
-        "bookingReady": booking_ready,
         "directOptions": direct_options,
         "directLowest": direct_lowest,
         "transferLowest": transfer,
-        "bookingChoices": choices,
-        "selectionRequired": selection_required(choices),
         "remainingQuota": summary.get("remainingQuota"),
         "dailyLimit": summary.get("dailyLimit"),
-        "registerPortalUrl": REGISTER_PORTAL_URL if not booking_enabled else None,
-        "bookingConfigHint": USER_BOOKING_AGENT_HINT if not booking_enabled else None,
-        "workflowSteps": BOOKING_WORKFLOW_STEPS if booking_ready else None,
+        "registerPortalUrl": REGISTER_PORTAL_URL if not is_newapi_configured() else None,
         "filterNote": filter_note or None,
+        "contactMessage": CONTACT_MESSAGE,
+        "contactMessageEn": CONTACT_MESSAGE_EN,
         "message": "\n".join(lines),
     }
 
@@ -223,13 +183,13 @@ def wrap_select(
     route = offer_uv.get("route") or selected.get("route") or ""
     msg = (
         f"已选择报价：{flights} {route}，约 {price} {currency}/人。"
-        f"报价ID：{quote_id}。"
-        f"请提供本次预订的乘客与联系人信息。"
+        f"报价ID：{quote_id}。\n"
+        f"{CONTACT_MESSAGE}"
     )
     user_view: dict[str, Any] = {
         "selectedOffer": offer_uv,
-        "passengerInfoPrompt": PASSENGER_INFO_USER_PROMPT,
-        "passengerInfoExamples": PASSENGER_INFO_EXAMPLES,
+        "contactMessage": CONTACT_MESSAGE,
+        "contactMessageEn": CONTACT_MESSAGE_EN,
         "message": msg,
     }
     agent_only: dict[str, Any] = {
@@ -237,8 +197,6 @@ def wrap_select(
         "offerId": selected.get("offerId"),
         "traceId": ctx.get("traceId"),
         "processingTime": ctx.get("processingTime"),
-        "workflowSteps": BOOKING_WORKFLOW_STEPS,
-        "nextStep": "skill_booking_client.py parse-passengers --text \"<用户输入>\"",
     }
     return wrap_envelope(
         action="select",
@@ -246,145 +204,4 @@ def wrap_select(
         user_view=user_view,
         agent_only=agent_only,
         message=msg,
-    )
-
-
-def format_verify_data(
-    raw: dict,
-    *,
-    passengers: list[dict[str, Any]] | None = None,
-    agent_contact: dict[str, str] | None = None,
-    passenger_raw_mappings: list[dict[str, Any]] | None = None,
-    contact_raw: dict[str, Any] | None = None,
-    selected_offer: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    code = str(raw.get("code", ""))
-    if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
-        out = booking_required_payload(step="verify")
-        out["message"] = raw.get("message") or USER_BOOKING_USER_MESSAGE
-        if raw.get("detail"):
-            out["detail"] = raw.get("detail")
-        return out
-
-    if is_verify_identity_mismatch(code, raw.get("message")):
-        out = verify_identity_mismatch_payload()
-        out["traceId"] = raw.get("traceId")
-        out["processingTime"] = raw.get("processingTime")
-        out["apiMessage"] = raw.get("message")
-        return out
-
-    success = _is_success(code)
-    data = raw.get("data") or {}
-    offers = data.get("offer") or []
-    offer = offers[0] if offers else {}
-    verify_offer_id = str(offer["offerId"]) if offer.get("offerId") is not None else None
-
-    lines: list[str] = []
-    if success:
-        lines.append(
-            f"校验成功 / Verified: 总价 / total {offer.get('totalPrice')} {offer.get('currency', '')}。"
-        )
-        lines.append(ORDER_CONFIRM_USER_PROMPT)
-    else:
-        lines.append(f"校验失败 / Verification failed：{raw.get('message') or code}")
-
-    out: dict[str, Any] = {
-        "success": success,
-        "code": code,
-        "traceId": raw.get("traceId"),
-        "processingTime": raw.get("processingTime"),
-        "verifyOfferId": verify_offer_id,
-        "totalPrice": offer.get("totalPrice"),
-        "currency": offer.get("currency"),
-        "workflowStep": 4 if success else 3,
-        "orderConfirmPrompt": ORDER_CONFIRM_USER_PROMPT if success else None,
-        "orderConfirmPromptEn": ORDER_CONFIRM_USER_PROMPT_EN if success else None,
-        "confirmPhraseEn": ORDER_CONFIRM_PHRASE_EN if success else None,
-        "message": "\n".join(lines),
-    }
-    if success and passengers and agent_contact:
-        p_disp = build_passenger_display(passengers, raw_mappings=passenger_raw_mappings)
-        c_disp = build_contact_display(agent_contact, raw=contact_raw)
-        out["passengers"] = passengers
-        out["agentContact"] = agent_contact
-        out["passengerDisplay"] = p_disp
-        out["contactDisplay"] = c_disp
-        out["requiresOrderConfirmation"] = True
-        out["orderPreview"] = {
-            "itinerary": build_itinerary_preview(
-                selected_offer=selected_offer,
-                verify_offer=offer,
-                total_price=offer.get("totalPrice"),
-                currency=offer.get("currency", ""),
-            ),
-            "passengerDisplay": p_disp,
-            "contactDisplay": c_disp,
-            "verifyOfferId": verify_offer_id,
-            "totalPrice": offer.get("totalPrice"),
-            "currency": offer.get("currency"),
-        }
-    return out
-
-
-def wrap_verify(data: dict[str, Any]) -> dict[str, Any]:
-    user_view = verify_user_view(data)
-    return wrap_envelope(
-        action="verify",
-        status="success" if data.get("success") else "failure",
-        user_view=user_view,
-        agent_only=verify_agent_only(data),
-        message=user_view.get("message", ""),
-    )
-
-
-def format_order_data(raw: dict) -> dict[str, Any]:
-    code = str(raw.get("code", ""))
-    if code in ("CONFIG_REQUIRED", "CONFIG_ERROR"):
-        out = booking_required_payload(step="order")
-        out["message"] = raw.get("message") or USER_BOOKING_USER_MESSAGE
-        return out
-
-    success = _is_success(code)
-    body = raw.get("data") or {}
-    lines: list[str] = []
-    if success:
-        lines.append(
-            f"生单成功 / Order placed: 订单号 / order no. {body.get('orderNo')}，"
-            f"状态 / status {body.get('orderStatus')}，"
-            f"总价 / total {body.get('totalPrice')} {body.get('currency', '')}。"
-        )
-        pay_deadline = body.get("payDeadline") or ""
-        pay_tip = "请登录 https://www.flightroutes24.com/ 在「订单管理」中完成支付"
-        if pay_deadline:
-            pay_tip += f"，支付截止时间：{pay_deadline}"
-        pay_tip += "，逾期订单将自动取消。"
-        pay_tip += " / Please log in to https://www.flightroutes24.com/ and pay under 'Order Management'"
-        if pay_deadline:
-            pay_tip += f", pay before {pay_deadline}"
-        pay_tip += "."
-        lines.append(pay_tip)
-    else:
-        lines.append(f"生单失败 / Order failed：{raw.get('message') or code}")
-
-    return {
-        "success": success,
-        "code": code,
-        "orderNo": body.get("orderNo"),
-        "orderStatus": body.get("orderStatus"),
-        "partnerOrderNo": body.get("partnerOrderNo"),
-        "totalPrice": body.get("totalPrice"),
-        "currency": body.get("currency"),
-        "payDeadline": body.get("payDeadline"),
-        "message": "\n".join(lines),
-    }
-
-
-def wrap_order(data: dict[str, Any]) -> dict[str, Any]:
-    user_view = order_user_view(data)
-    return wrap_envelope(
-        action="order",
-        status="success" if data.get("success") else "failure",
-        user_view=user_view,
-        agent_only=order_agent_only(data),
-        message=user_view.get("message", ""),
     )

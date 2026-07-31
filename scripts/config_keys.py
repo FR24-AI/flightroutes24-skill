@@ -17,7 +17,6 @@ from config import (  # noqa: E402
     _ENV_TO_JSON_KEYS,
     _load_dotenv,
     _load_keys_json,
-    is_booking_ready,
     is_newapi_configured,
     reload_config,
 )
@@ -36,7 +35,6 @@ def cmd_status() -> dict:
     sources: dict = {}
 
     for env_name, json_key in _ENV_TO_JSON_KEYS.items():
-        from_env = (env_name in env) or (bool(__import__("os").environ.get(env_name, "").strip()))
         from_dotenv = env_name in env
         from_json = json_key in keys
         sources[env_name] = {
@@ -51,16 +49,13 @@ def cmd_status() -> dict:
         }
 
     configured = is_newapi_configured()
-    booking = is_booking_ready()
-
-    message = f"采购配置: {'已配置' if configured else '未配置'}，预订: {'就绪' if booking else '未就绪'}"
+    message = f"采购配置: {'已配置' if configured else '未配置'}"
     return {
         "skill": "fr24-ai",
         "status": "success",
         "action": "config-status",
         "data": {
             "configured": configured,
-            "bookingReady": booking,
             "sources": sources,
         },
         "message": message,
@@ -80,8 +75,6 @@ def cmd_set(values: dict[str, str]) -> dict:
         "appkey": "appkey",
         "sign-secret": "signSecret",
         "sign_secret": "signSecret",
-        "aes-secret": "aesSecret",
-        "aes_secret": "aesSecret",
     }
     updated = []
     for key, val in values.items():
@@ -97,7 +90,6 @@ def cmd_set(values: dict[str, str]) -> dict:
     reload_config()
 
     configured = is_newapi_configured()
-    booking = is_booking_ready()
     return {
         "skill": "fr24-ai",
         "status": "success",
@@ -105,9 +97,8 @@ def cmd_set(values: dict[str, str]) -> dict:
         "data": {
             "updated": updated,
             "configured": configured,
-            "bookingReady": booking,
         },
-        "message": f"已更新: {', '.join(updated)}。采购: {'已配置' if configured else '未配置'}，预订: {'就绪' if booking else '未就绪'}",
+        "message": f"已更新: {', '.join(updated)}。采购: {'已配置' if configured else '未配置'}",
     }
 
 
@@ -132,7 +123,6 @@ def main() -> int:
     p_set = sub.add_parser("set", help="设置密钥（写入 .cache/keys.json）")
     p_set.add_argument("--appkey", default="", help="采购 APPKEY")
     p_set.add_argument("--sign-secret", default="", help="SHA512 签名密钥")
-    p_set.add_argument("--aes-secret", default="", help="16 字节 AES 密钥")
 
     sub.add_parser("clear", help="清除 .cache/keys.json")
 
@@ -142,21 +132,15 @@ def main() -> int:
         out = cmd_status()
     elif args.cmd == "set":
         vals = {
-            k: getattr(args, k, "").strip()
-            for k in ("appkey", "sign_secret", "aes_secret")
-        }
-        # argparse 将 - 转为 _，映射回来
-        vals = {
             "appkey": args.appkey.strip(),
             "sign-secret": args.sign_secret.strip(),
-            "aes-secret": args.aes_secret.strip(),
         }
         if not any(vals.values()):
             out = {
                 "skill": "fr24-ai",
                 "status": "failure",
                 "action": "config-set",
-                "message": "请至少指定一项: --appkey, --sign-secret, --aes-secret",
+                "message": "请至少指定一项: --appkey, --sign-secret",
             }
         else:
             out = cmd_set(vals)

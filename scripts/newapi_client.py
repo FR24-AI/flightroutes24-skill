@@ -1,4 +1,4 @@
-"""export HTTP：Skill 搜索 + NewApi 校验/生单。"""
+"""export HTTP：Skill 搜索。"""
 from __future__ import annotations
 
 import gzip
@@ -17,25 +17,19 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from config import (  # noqa: E402
-    BOOKING_PATH,
     CACHE_DIR,
     CLIENT_KEY_FILE,
     CLIENT_KEY_HEADER,
     EXPORT_BASE_URL,
     FR24_API_HEADER,
     GRAY_HEADER,
-    NEWAPI_AES_SECRET,
     NEWAPI_APP_KEY,
     NEWAPI_SIGN_SECRET,
     NEWAPI_SKIP_AUTH,
     NEWAPI_SKIP_IP_WHITELIST,
-    PRICING_PATH,
     SHOPPING_V2_PATH,
-    USER_BOOKING_USER_MESSAGE,
-    booking_required_payload,
     is_newapi_configured,
 )
-from newapi_auth import build_authentication, encrypt_passengers  # noqa: E402
 
 BJ = ZoneInfo("Asia/Shanghai")
 SUCCESS_CODES = frozenset({"0", "000000"})
@@ -108,6 +102,24 @@ def _strip_client_only_prefs(payload: dict) -> dict:
     return body
 
 
+def _require_newapi_secrets() -> str | None:
+    if NEWAPI_SKIP_AUTH:
+        return None if NEWAPI_APP_KEY else "未配置 FR_NEWAPI_APPKEY"
+    if not NEWAPI_APP_KEY:
+        return "未配置 FR_NEWAPI_APPKEY"
+    if not NEWAPI_SIGN_SECRET:
+        return "未配置 FR_NEWAPI_SIGN_SECRET"
+    return None
+
+
+def _attach_auth(body: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(body)
+    if not NEWAPI_SKIP_AUTH:
+        from newapi_auth import build_authentication  # noqa: E402
+        payload["authentication"] = build_authentication(NEWAPI_APP_KEY, NEWAPI_SIGN_SECRET)
+    return payload
+
+
 def skill_shopping_v2(payload: dict) -> dict:
     """走 /ai/shopping/v2：直飞按航班号去重后各取最低价（最多 N 条），中转取一条最低价。"""
     key = ensure_client_key()
@@ -119,7 +131,7 @@ def skill_shopping_v2(payload: dict) -> dict:
     if is_newapi_configured():
         err = _require_newapi_secrets()
         if err:
-            return {"code": "CONFIG_REQUIRED", "message": USER_BOOKING_USER_MESSAGE, "detail": err}
+            return {"code": "CONFIG_REQUIRED", "message": f"采购密钥配置错误：{err}"}
         headers["appkey"] = NEWAPI_APP_KEY
         headers["Accept-Encoding"] = "gzip"
         if NEWAPI_SKIP_AUTH:
@@ -136,114 +148,3 @@ def run_search_v2(payload: dict) -> tuple[dict, str]:
     """v2 搜索：直飞按航班号去重，每航班号取最低价，最多 N 条。"""
     mode = "skill-auth" if is_newapi_configured() else "skill"
     return skill_shopping_v2(payload), mode
-
-
-def _newapi_headers_base() -> dict[str, str]:
-    headers = {
-        "Content-Type": "application/json; charset=utf-8",
-        "appkey": NEWAPI_APP_KEY,
-        "Accept-Encoding": "gzip",
-    }
-    if GRAY_HEADER:
-        headers["gray"] = GRAY_HEADER
-    if NEWAPI_SKIP_AUTH:
-        headers["fr24-skip-auth"] = "1"
-    return headers
-
-
-def _newapi_channel_headers() -> dict[str, str]:
-    """校验 / 生单等 NewApi 写操作请求头。"""
-    headers = _newapi_headers_base()
-    headers[FR24_API_HEADER] = "1"
-    return headers
-
-
-def _require_newapi_secrets() -> str | None:
-    if NEWAPI_SKIP_AUTH:
-        return None if NEWAPI_APP_KEY else "未配置 FR_NEWAPI_APPKEY"
-    if not NEWAPI_APP_KEY:
-        return "未配置 FR_NEWAPI_APPKEY"
-    if not NEWAPI_SIGN_SECRET:
-        return "未配置 FR_NEWAPI_SIGN_SECRET"
-    return None
-
-
-def require_booking_config(for_order: bool = False) -> str | None:
-    err = _require_newapi_secrets()
-    if err:
-        return err
-    if for_order and not NEWAPI_AES_SECRET:
-        return "未配置 FR_NEWAPI_AES_SECRET（16 字节，乘客 AES）"
-    return None
-
-
-def _attach_auth(body: dict[str, Any]) -> dict[str, Any]:
-    payload = dict(body)
-    if not NEWAPI_SKIP_AUTH:
-        payload["authentication"] = build_authentication(NEWAPI_APP_KEY, NEWAPI_SIGN_SECRET)
-    return payload
-
-
-def pricing(
-    offer_id: str,
-    adult_num: int = 1,
-    child_num: int = 0,
-    infant_num: int = 0,
-    series_trace_id: str | None = None,
-    series_rs_time: int | None = None,
-) -> dict:
-    err = require_booking_config(for_order=False)
-    if err:
-        out = booking_required_payload(step="verify")
-        out["detail"] = err
-        return out
-
-    body: dict[str, Any] = {
-        "offerId": offer_id,
-        "adultNum": adult_num,
-        "childNum": child_num,
-        "infantNum": infant_num,
-    }
-    if series_trace_id:
-        body["seriesTraceId"] = series_trace_id
-    if series_rs_time is not None:
-        body["seriesRsTime"] = series_rs_time
-
-    return _http_post(
-        EXPORT_BASE_URL + PRICING_PATH,
-        _attach_auth(body),
-        _newapi_channel_headers(),
-    )
-
-
-def booking(
-    offer_id: str,
-    passengers: list[dict[str, Any]],
-    agent_contact: dict[str, Any],
-    partner_order_no: str | None = None,
-) -> dict:
-    err = require_booking_config(for_order=True)
-    if err:
-        out = booking_required_payload(step="order")
-        out["detail"] = err
-        return out
-
-    try:
-        passenger_encrypt = encrypt_passengers(passengers, NEWAPI_AES_SECRET)
-    except ValueError as e:
-        return {"code": "CONFIG_ERROR", "message": str(e)}
-
-    body: dict[str, Any] = {
-        "offerId": offer_id,
-        "passengers": passenger_encrypt,
-        "agentContact": agent_contact,
-    }
-    if partner_order_no:
-        body["partnerOrderNo"] = partner_order_no
-
-    return _http_post(
-        EXPORT_BASE_URL + BOOKING_PATH,
-        _attach_auth(body),
-        _newapi_channel_headers(),
-        timeout=180,
-    )

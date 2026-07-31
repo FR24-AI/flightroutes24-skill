@@ -7,8 +7,83 @@ from pathlib import Path
 from typing import Any
 
 from date_parser import parse_date
-from passenger_parser import DEFAULT, parse_passengers, validate_passengers
 from place_resolver import resolve_place_detail, resolve_place_required
+
+# ---------------------------------------------------------------------------
+# 内联人数解析（轻量版，替代已移除的 passenger_parser 模块）
+# ---------------------------------------------------------------------------
+
+DEFAULT = {"adultNum": 1, "childNum": 0, "infantNum": 0}
+
+_CN_DIGIT: dict[str, int] = {
+    "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+    "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
+}
+
+
+def _cn_to_int(token: str) -> int | None:
+    token = (token or "").strip()
+    if token.isdigit():
+        return int(token)
+    if token in _CN_DIGIT:
+        return _CN_DIGIT[token]
+    return None
+
+
+def _first_int(pattern: str, s: str) -> int | None:
+    m = re.search(pattern, s, re.I)
+    if not m:
+        return None
+    for g in m.groups():
+        if g and str(g).isdigit():
+            return int(g)
+    return None
+
+
+def _from_cn_num(s: str, *keywords: str) -> int | None:
+    for kw in keywords:
+        m = re.search(rf"([一二两三四五六七八九\d]+)\s*[位个]?\s*{kw}", s, re.I)
+        if m:
+            return _cn_to_int(m.group(1))
+    return None
+
+
+def parse_passengers(text: str | None) -> dict[str, int]:
+    if not text:
+        return dict(DEFAULT)
+    s = text.replace(" ", "")
+    adult = (
+        _first_int(r"(\d+)\s*[位个]?\s*成人|(\d+)\s*[位个]?\s*大", s)
+        or _from_cn_num(s, "大", "成人", "大人", "adult")
+    )
+    child = (
+        _first_int(r"(\d+)\s*[位个]?\s*小|(\d+)\s*[位个]?\s*儿童|(\d+)\s*chd", s)
+        or _from_cn_num(s, "小", "儿童", "小孩", "child")
+    )
+    infant = (
+        _first_int(r"(\d+)\s*[位个]?\s*婴|(\d+)\s*[位个]?\s*婴儿|(\d+)\s*inf", s)
+        or _from_cn_num(s, "婴儿", "infant")
+    )
+    if adult is None and child is None and infant is None:
+        return dict(DEFAULT)
+    return {
+        "adultNum": max(1, adult or 1),
+        "childNum": max(0, child or 0),
+        "infantNum": max(0, infant or 0),
+    }
+
+
+def validate_passengers(p: dict[str, int]) -> str | None:
+    a, c, i = p["adultNum"], p["childNum"], p["infantNum"]
+    if a + c > 9:
+        return "成人+儿童不能超过9人"
+    if c > a * 2:
+        return "1位成人最多带2位儿童"
+    if a + i > 18:
+        return "成人+婴儿不能超过18人"
+    if i > a:
+        return "婴儿数量不能超过成人数量"
+    return None
 from search_refinement import (  # noqa: E402
     describe_preferences,
     parse_carriers_from_text,
