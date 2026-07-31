@@ -125,9 +125,9 @@ REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"
 
 CONTACT_PHONE = "181xxxx888"
 
-CONTACT_MESSAGE = f"如需预订，请联系我们的工作人员：{CONTACT_PHONE}"
+CONTACT_MESSAGE = f"需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 {CONTACT_PHONE} 协助 ✈️"
 
-CONTACT_MESSAGE_EN = f"To place a booking, please contact our staff: {CONTACT_PHONE}"
+CONTACT_MESSAGE_EN = f"To place a booking or experience the full AI fare search service, please contact our staff at {CONTACT_PHONE} for assistance ✈️"
 
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE = (
     f"搜索失败，请确认采购密钥已正确配置。"

@@ -149,7 +149,7 @@ def skill_shopping_v2(payload: dict) -> dict:
         if NEWAPI_SKIP_AUTH:
             headers["fr24-skip-auth"] = "1"
         if NEWAPI_SKIP_IP_WHITELIST:
-            headers[FR24_API_HEADER] = "1"
+            headers[FR24_API_HEADER] = "ceshi"
         body = _attach_auth(body)
     if GRAY_HEADER:
         headers["gray"] = GRAY_HEADER
