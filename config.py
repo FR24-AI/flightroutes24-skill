@@ -23,7 +23,7 @@ SKILL_DISPLAY_NAME = "Flightroutes24航路国际机票"
 SKILL_AUTHOR = "FR24"
 
 # --- export 网关（项目内固定；切换环境请直接改此处，勿使用 skill.local.env）---
-EXPORT_BASE_URL = "https://flight-deve.flightroutes24.com"
+EXPORT_BASE_URL = "https://flight.flightroutes24.com"
 GRAY_HEADER = "ww"
 
 SHOPPING_V2_PATH = "/ai/shopping/v2"
@@ -123,11 +123,18 @@ FR24_API_HEADER = "fr24-api"
 
 REGISTER_PORTAL_URL = "https://www.flightroutes24.com/"
 
-CONTACT_PHONE = "181xxxx888"
+CONTACT_PHONE = "18818568189"
 
-CONTACT_MESSAGE = f"需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 {CONTACT_PHONE} 协助 ✈️"
+CONTACT_MESSAGE = (
+    f"本版本仅支持查价。需要下单或完整体验 AI 自动报价功能的，"
+    f"可以联系我们的工作人员 {CONTACT_PHONE} 协助 ✈️"
+)
 
-CONTACT_MESSAGE_EN = f"To place a booking or experience the full AI fare search service, please contact our staff at {CONTACT_PHONE} for assistance ✈️"
+CONTACT_MESSAGE_EN = (
+    f"This version supports fare search only. "
+    f"To place a booking or experience the full AI fare search service, "
+    f"please contact our staff at {CONTACT_PHONE} for assistance ✈️"
+)
 
 USER_SKILL_QUOTA_EXCEEDED_MESSAGE = (
     f"搜索失败，请确认采购密钥已正确配置。"
