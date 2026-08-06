@@ -1,6 +1,6 @@
 ﻿---
 name: fr24-ai
-description: "Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping/v2（需采购密钥）；如需预订请联系工作人员：181xxxx888。触发词：查航班、搜机票、飞。Keywords: flight search, search flights, air ticket, check fare, flight price, international flight, one-way, round trip."
+description: "Flightroutes24 航路国际机票（FR24-AI，作者 FR24）。查价 POST /ai/shopping/v2（需采购密钥）；如需预订请联系工作人员：18818568189。触发词：查航班、搜机票、飞。Keywords: flight search, search flights, air ticket, check fare, flight price, international flight, one-way, round trip."
 homepage: https://www.flightroutes24.com/
 metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "homepage": "https://www.flightroutes24.com/", "requires": {"anyBins": ["python3", "python"]}, "envVars": [{"name": "FR_NEWAPI_APPKEY", "required": false, "description": "采购 APPKEY（演示模式无需配置）"}, {"name": "FR_NEWAPI_SIGN_SECRET", "required": false, "description": "SHA512 签名密钥（采购模式）"}]}}
 ---
@@ -34,7 +34,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 |------|------|------|
 | 查价 | 需配置 APPKEY 与签名密钥（未配置返回 `307904`） | `POST /ai/shopping/v2`，请求头 `appkey`，请求体 `authentication` |
 
-> **演示版本**：本版本仅支持查价。需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 **181xxxx888** 协助 ✈️
+> **演示版本**：本版本仅支持查价。需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 **18818568189** 协助 ✈️
 
 ---
 
@@ -114,7 +114,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
    → 按 **[output-rules.md](./references/output-rules.md)** 以**纯文本分行格式**展示，**顺序固定：先列完所有直飞，再列中转**。
    → `userView.directOptions` 有多少条展示多少条，**不得截断**，每条独占多行。
    → 每条必须包含：序号①②③、航班号、完整航线、各段起降时间（跨日注"次日"）、价格、**实际退改规则**、行李（每段）、**完整报价ID**（不得截断）。
-   → 搜索结果末尾展示：**需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 181xxxx888 协助 ✈️**
+   → 搜索结果末尾展示：**需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 18818568189 协助 ✈️**
 3. 禁止将整段 stdout、`agentOnly` 或 `.cache` 路径直接提供给用户。
 
 ### GDS/PNR 格式路径
@@ -156,7 +156,7 @@ metadata: {"openclaw": {"emoji": "✈️", "primaryEnv": "FR_NEWAPI_APPKEY", "ho
 ## 如需预订
 
 > **本演示版本不支持在线预订。**  
-> 用户有预订意向时，直接告知：**需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 181xxxx888 协助 ✈️**  
+> 用户有预订意向时，直接告知：**需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 18818568189 协助 ✈️**  
 > 禁止引导用户提供乘客证件信息、联系人信息或任何预订相关内容。
 
 ---
@@ -193,5 +193,5 @@ For English users: guide them to register at [Flightroutes24](https://www.flight
 
 - 支持单程、往返；不支持多段缺口程。/ Supports one-way and round-trip; multi-city itineraries are not supported.
 - 搜索接口（v2）必须配置采购密钥；未配置时返回 `307904`，应引导用户按「采购密钥」章节完成配置。
-- **本演示版本仅提供查价服务，不支持在线预订。需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 181xxxx888 协助 ✈️**  
-  This demo version supports fare search only. To place a booking or experience the full AI fare search service, please contact our staff at 181xxxx888 ✈️
+- **本演示版本仅提供查价服务，不支持在线预订。需要下单或完整体验 AI 自动报价功能的，可以联系我们的工作人员 18818568189 协助 ✈️**  
+  This demo version supports fare search only. To place a booking or experience the full AI fare search service, please contact our staff at 18818568189 ✈️
